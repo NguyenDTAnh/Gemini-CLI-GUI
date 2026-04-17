@@ -50,6 +50,18 @@
       {
         "command": "geminiCliChat.clearSessions",
         "title": "Gemini Chat: Clear All Sessions"
+      },
+      {
+        "command": "geminiCliChat.insertSelectedContext",
+        "title": "Gemini Chat: Add Selected Context"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "geminiCliChat.insertSelectedContext",
+        "key": "ctrl+shift+i",
+        "mac": "cmd+shift+i",
+        "when": "editorTextFocus && editorHasSelection"
       }
     ],
     "configuration": {

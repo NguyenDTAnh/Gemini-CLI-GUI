@@ -101,7 +101,8 @@ export class ChatSessionStore {
       createdAt: now,
       updatedAt: now,
       attachments: [],
-      messages: []
+      messages: [],
+      activeMode: "plan"
     };
   }
 

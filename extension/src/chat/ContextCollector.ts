@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import * as vscode from "vscode";
-import { Attachment } from "../types";
+import { Attachment, DroppedFilePayload } from "../types";
 
 export class ContextCollector {
   async pickAttachments(maxFiles: number): Promise<Attachment[]> {
@@ -25,6 +25,30 @@ export class ContextCollector {
     }
 
     return this.toAttachment(editor.document.uri, editor.document.languageId);
+  }
+
+  fromDroppedFiles(files: DroppedFilePayload[]): Attachment[] {
+    const attachments: Attachment[] = [];
+
+    for (const file of files) {
+      const fsPath = file.fsPath ?? this.fsPathFromUri(file.uri);
+      if (!fsPath) {
+        continue;
+      }
+
+      const uri = file.uri ?? vscode.Uri.file(fsPath).toString();
+      attachments.push({
+        id: randomUUID(),
+        name: file.name || fsPath.split("/").pop() || "untitled",
+        fsPath,
+        uri,
+        mimeType: file.mimeType,
+        size: file.size,
+        isImage: Boolean(file.mimeType?.startsWith("image/"))
+      });
+    }
+
+    return attachments;
   }
 
   async buildContext(attachments: Attachment[], maxChars: number): Promise<string> {
@@ -76,5 +100,17 @@ export class ContextCollector {
       uri: uri.toString(),
       language
     };
+  }
+
+  private fsPathFromUri(value?: string): string | undefined {
+    if (!value) {
+      return undefined;
+    }
+
+    try {
+      return vscode.Uri.parse(value).fsPath;
+    } catch {
+      return undefined;
+    }
   }
 }

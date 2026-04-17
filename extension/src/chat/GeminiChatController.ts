@@ -7,7 +7,9 @@ import { ChatSessionStore } from "../state/ChatSessionStore";
 import {
   Attachment,
   ChatMessage,
+  ChatMode,
   ChatSession,
+  DroppedFilePayload,
   ExtensionToWebviewMessage,
   WebviewToExtensionMessage
 } from "../types";
@@ -74,6 +76,38 @@ export class GeminiChatController {
     this.processManager.stopRequest(this.activeRequest.requestId);
   }
 
+  async prefillFromActiveSelection(): Promise<void> {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) {
+      this.post({ type: "info", message: "No active editor found." });
+      return;
+    }
+
+    const raw = editor.document.getText(editor.selection).trim();
+    if (!raw) {
+      this.post({ type: "info", message: "Please select some text first." });
+      return;
+    }
+
+    const session = await this.ensureActiveSession();
+    const startLine = editor.selection.start.line + 1;
+    const endLine = editor.selection.end.line + 1;
+    const targetPath = vscode.workspace.asRelativePath(editor.document.uri, false);
+    const payload = [
+      `## Selected context: ${targetPath}:${startLine}-${endLine}`,
+      `\`\`\`${editor.document.languageId}`,
+      raw,
+      "```"
+    ].join("\n");
+
+    this.post({
+      type: "composerPrefill",
+      sessionId: session.id,
+      text: payload,
+      append: true
+    });
+  }
+
   private async handleMessage(message: WebviewToExtensionMessage): Promise<void> {
     switch (message.type) {
       case "ready":
@@ -88,6 +122,18 @@ export class GeminiChatController {
         return;
       case "sendPrompt":
         await this.sendPrompt(message.sessionId, message.prompt);
+        return;
+      case "setModel":
+        await this.setModel(message.sessionId, message.modelId);
+        return;
+      case "toggleMode":
+        await this.setMode(message.sessionId, message.mode);
+        return;
+      case "attachFiles":
+        await this.attachDroppedFiles(message.sessionId, message.files);
+        return;
+      case "insertSelectedContext":
+        await this.insertSelectedContext(message.sessionId, message.text, message.source);
         return;
       case "retryLast":
         await this.retryLast(message.sessionId);
@@ -137,15 +183,11 @@ export class GeminiChatController {
 
     const config = vscode.workspace.getConfiguration("geminiCliChat");
     const defaultArgs = config.get<string[]>("defaultArgs", []);
-    
-    // Extract model name from args if present (-m model or --model model)
-    let modelName = "Gemini";
-    for (let i = 0; i < defaultArgs.length; i++) {
-      if ((defaultArgs[i] === "-m" || defaultArgs[i] === "--model") && i + 1 < defaultArgs.length) {
-        modelName = defaultArgs[i + 1];
-        break;
-      }
-    }
+
+    const preferredModel = (session.defaultModelId || "").trim();
+    const modelName = preferredModel || this.extractModelNameFromArgs(defaultArgs) || "Gemini";
+    const resolvedArgs = preferredModel ? this.overrideModelArg(defaultArgs, preferredModel) : defaultArgs;
+    const effectiveMode = route.commandMeta?.mode ?? session.activeMode ?? "plan";
 
     const assistantMessage: ChatMessage = {
       id: randomUUID(),
@@ -154,8 +196,12 @@ export class GeminiChatController {
       createdAt: Date.now(),
       status: "streaming",
       requestId,
-      model: modelName
+      model: modelName,
+      modelId: modelName,
+      mode: effectiveMode
     };
+
+    userMessage.mode = effectiveMode;
 
     session.messages.push(userMessage, assistantMessage);
     session.updatedAt = Date.now();
@@ -188,7 +234,7 @@ export class GeminiChatController {
     this.processManager.runRequest({
       requestId,
       cliPath,
-      args: defaultArgs,
+      args: resolvedArgs,
       timeoutMs,
       prompt: route.transformedPrompt,
       responseLanguage,
@@ -284,6 +330,68 @@ export class GeminiChatController {
     await this.attachToSession(session, attachments);
   }
 
+  private async setModel(sessionId: string, modelId: string): Promise<void> {
+    const nextModel = modelId.trim();
+    if (!nextModel) {
+      this.post({ type: "info", message: "Model id is required." });
+      return;
+    }
+
+    const session = await this.ensureSession(sessionId);
+    session.defaultModelId = nextModel;
+    session.updatedAt = Date.now();
+    await this.store.upsertSession(session);
+    this.post({ type: "sessionUpdated", session });
+    this.post({ type: "modelUpdated", sessionId: session.id, modelId: nextModel });
+  }
+
+  private async setMode(sessionId: string, mode: ChatMode): Promise<void> {
+    const session = await this.ensureSession(sessionId);
+    session.activeMode = mode;
+    session.updatedAt = Date.now();
+    await this.store.upsertSession(session);
+    this.post({ type: "sessionUpdated", session });
+    this.post({ type: "modeUpdated", sessionId: session.id, mode });
+  }
+
+  private async attachDroppedFiles(sessionId: string, files: DroppedFilePayload[]): Promise<void> {
+    if (files.length === 0) {
+      return;
+    }
+
+    const config = vscode.workspace.getConfiguration("geminiCliChat");
+    const maxAttachedFiles = config.get<number>("maxAttachedFiles", 5);
+    const session = await this.ensureSession(sessionId);
+    const available = Math.max(0, maxAttachedFiles - session.attachments.length);
+    if (available === 0) {
+      this.post({ type: "info", message: "Attachment limit reached for this session." });
+      return;
+    }
+
+    const additions = this.contextCollector.fromDroppedFiles(files).slice(0, available);
+    if (additions.length === 0) {
+      this.post({ type: "info", message: "No valid files were dropped." });
+      return;
+    }
+
+    await this.attachToSession(session, additions);
+  }
+
+  private async insertSelectedContext(
+    sessionId: string,
+    text: string,
+    source: "editorSelection" | "manual" = "manual"
+  ): Promise<void> {
+    const trimmed = text.trim();
+    if (!trimmed) {
+      return;
+    }
+
+    const session = await this.ensureSession(sessionId);
+    const payload = source === "editorSelection" ? trimmed : ["## Context", trimmed].join("\n\n");
+    this.post({ type: "composerPrefill", sessionId: session.id, text: payload, append: true });
+  }
+
   private async attachToSession(session: ChatSession, additions: Attachment[]): Promise<void> {
     const existing = new Set(session.attachments.map((item) => item.fsPath));
     const unique = additions.filter((item) => !existing.has(item.fsPath));
@@ -341,5 +449,38 @@ export class GeminiChatController {
     }
 
     void this.webview.postMessage(message);
+  }
+
+  private extractModelNameFromArgs(args: string[]): string | undefined {
+    for (let i = 0; i < args.length; i++) {
+      const current = args[i];
+      if ((current === "-m" || current === "--model") && i + 1 < args.length) {
+        return args[i + 1];
+      }
+
+      if (current.startsWith("--model=")) {
+        return current.slice("--model=".length);
+      }
+    }
+
+    return undefined;
+  }
+
+  private overrideModelArg(args: string[], modelId: string): string[] {
+    const next = [...args];
+    for (let i = 0; i < next.length; i++) {
+      if ((next[i] === "-m" || next[i] === "--model") && i + 1 < next.length) {
+        next[i + 1] = modelId;
+        return next;
+      }
+
+      if (next[i].startsWith("--model=")) {
+        next[i] = `--model=${modelId}`;
+        return next;
+      }
+    }
+
+    next.push("--model", modelId);
+    return next;
   }
 }

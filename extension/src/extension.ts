@@ -55,6 +55,12 @@ export function activate(context: vscode.ExtensionContext): void {
       }
     })
   );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("geminiCliChat.insertSelectedContext", async () => {
+      await controller?.prefillFromActiveSelection();
+    })
+  );
 }
 
 export function deactivate(): void {

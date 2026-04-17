@@ -1,15 +1,44 @@
+import { ChatMode } from "../types";
+
 export interface SlashRouteResult {
   rawPrompt: string;
   transformedPrompt: string;
   command?: string;
+  commandMeta?: SlashCommandDefinition;
+  matchedArgs?: string[];
   valid: boolean;
 }
 
-const COMMAND_HINTS: Record<string, string> = {
-  explain: "Explain the provided code and reasoning with concise actionable steps.",
-  fix: "Identify issues and provide a concrete patch-level fix.",
-  summarize: "Summarize the key technical points and decisions.",
-  tests: "Propose practical tests for this code including edge cases."
+export interface SlashCommandDefinition {
+  name: string;
+  hint: string;
+  category: "analysis" | "generation" | "editing" | "debug";
+  mode?: ChatMode;
+  requiresAttachment?: boolean;
+}
+
+const COMMAND_REGISTRY: Record<string, SlashCommandDefinition> = {
+  explain: {
+    name: "explain",
+    hint: "Explain the provided code and reasoning with concise actionable steps.",
+    category: "analysis"
+  },
+  fix: {
+    name: "fix",
+    hint: "Identify issues and provide a concrete patch-level fix.",
+    category: "editing",
+    mode: "edit"
+  },
+  summarize: {
+    name: "summarize",
+    hint: "Summarize the key technical points and decisions.",
+    category: "analysis"
+  },
+  tests: {
+    name: "tests",
+    hint: "Propose practical tests for this code including edge cases.",
+    category: "debug"
+  }
 };
 
 export class SlashCommandRouter {
@@ -27,19 +56,20 @@ export class SlashCommandRouter {
     const command = head.slice(1).toLowerCase();
     const body = rest.join(" ").trim();
 
-    const hint = COMMAND_HINTS[command];
-    if (!hint) {
+    const definition = COMMAND_REGISTRY[command];
+    if (!definition) {
       return {
         rawPrompt: prompt,
         transformedPrompt: body || prompt,
         command,
+        matchedArgs: body ? body.split(/\s+/) : [],
         valid: false
       };
     }
 
     const transformedPrompt = [
       `Command: /${command}`,
-      `Instruction: ${hint}`,
+      `Instruction: ${definition.hint}`,
       "",
       "User input:",
       body
@@ -51,11 +81,17 @@ export class SlashCommandRouter {
       rawPrompt: prompt,
       transformedPrompt,
       command,
+      commandMeta: definition,
+      matchedArgs: body ? body.split(/\s+/) : [],
       valid: true
     };
   }
 
   getSupportedCommands(): string[] {
-    return Object.keys(COMMAND_HINTS).map((name) => `/${name}`);
+    return Object.keys(COMMAND_REGISTRY).map((name) => `/${name}`);
+  }
+
+  getCommandRegistry(): Readonly<Record<string, SlashCommandDefinition>> {
+    return COMMAND_REGISTRY;
   }
 }
