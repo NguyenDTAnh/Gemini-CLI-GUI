@@ -9,9 +9,18 @@
     "build:watch": "vite build --watch"
   },
   "dependencies": {
+    "@types/diff": "^7.0.2",
+    "@types/react-syntax-highlighter": "^15.5.13",
+    "diff": "^9.0.0",
     "lucide-react": "^0.468.0",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-diff-view": "^3.3.3",
+    "react-dom": "^18.3.1",
+    "react-markdown": "^10.1.0",
+    "react-syntax-highlighter": "^16.1.1",
+    "rehype-raw": "^7.0.0",
+    "remark-emoji": "^5.0.2",
+    "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
     "@types/react": "^18.3.12",

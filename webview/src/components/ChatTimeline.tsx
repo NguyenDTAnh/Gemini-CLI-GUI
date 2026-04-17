@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { ChatMessage } from "../types";
 import { MessageItem } from "./MessageItem";
 
@@ -7,6 +8,12 @@ interface ChatTimelineProps {
 }
 
 export function ChatTimeline({ messages, onRetry }: ChatTimelineProps) {
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
   if (messages.length === 0) {
     return (
       <div className="empty-state">
@@ -21,6 +28,7 @@ export function ChatTimeline({ messages, onRetry }: ChatTimelineProps) {
       {messages.map((message) => (
         <MessageItem key={message.id} message={message} onRetry={message.role === "assistant" ? onRetry : undefined} />
       ))}
+      <div ref={bottomRef} style={{ height: 1, width: "100%" }} />
     </div>
   );
 }

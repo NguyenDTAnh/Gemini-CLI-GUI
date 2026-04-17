@@ -32,13 +32,22 @@ export function Composer({ running, onSubmit, onStop, onAttach }: ComposerProps)
     setValue("");
   };
 
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      submit(event as unknown as FormEvent);
+    }
+  };
+
   return (
     <form className="composer" onSubmit={submit}>
       <textarea
         value={value}
         onChange={(event) => setValue(event.target.value)}
+        onKeyDown={handleKeyDown}
         placeholder="Describe what to build"
-        rows={4}
+        rows={1}
+        style={{ minHeight: "24px" }}
       />
 
       {slashSuggestions.length > 0 && (
