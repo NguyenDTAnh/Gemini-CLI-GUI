@@ -2,8 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import { Composer } from "./components/Composer";
 import { ChatTimeline } from "./components/ChatTimeline";
 import { SessionSidebar } from "./components/SessionSidebar";
-import { ChatSession, ExtensionToWebviewMessage, WebviewToExtensionMessage } from "./types";
+import { ChatMode, ChatSession, ExtensionToWebviewMessage, WebviewToExtensionMessage } from "./types";
 import { vscode } from "./vscode";
+
+const DEFAULT_SLASH_COMMANDS = ["/explain", "/fix", "/summarize", "/tests"];
 
 function upsertSession(sessions: ChatSession[], nextSession: ChatSession): ChatSession[] {
   const existingIndex = sessions.findIndex((item) => item.id === nextSession.id);
@@ -25,6 +27,13 @@ export default function App() {
   const [activeSessionId, setActiveSessionId] = useState<string>("");
   const [running, setRunning] = useState(false);
   const [banner, setBanner] = useState<{ kind: "info" | "error"; text: string } | null>(null);
+  const [availableModels, setAvailableModels] = useState<string[]>(["gemini"]);
+  const [slashCommands, setSlashCommands] = useState<string[]>(DEFAULT_SLASH_COMMANDS);
+  const [composerPrefill, setComposerPrefill] = useState<{
+    nonce: number;
+    text: string;
+    append: boolean;
+  } | null>(null);
 
   const activeSession = useMemo(
     () => sessions.find((session) => session.id === activeSessionId) || sessions[0],
@@ -39,6 +48,8 @@ export default function App() {
         case "bootstrapped": {
           setSessions(message.payload.sessions);
           setActiveSessionId(message.payload.activeSessionId);
+          setAvailableModels(message.payload.availableModels?.length ? message.payload.availableModels : ["gemini"]);
+          setSlashCommands(message.payload.supportedCommands?.length ? message.payload.supportedCommands : DEFAULT_SLASH_COMMANDS);
           return;
         }
         case "sessionsCleared": {
@@ -79,6 +90,48 @@ export default function App() {
         }
         case "generationState": {
           setRunning(message.running);
+          return;
+        }
+        case "modelUpdated": {
+          setSessions((prev) =>
+            prev.map((session) =>
+              session.id === message.sessionId
+                ? {
+                    ...session,
+                    defaultModelId: message.modelId,
+                    updatedAt: Date.now()
+                  }
+                : session
+            )
+          );
+          return;
+        }
+        case "modeUpdated": {
+          setSessions((prev) =>
+            prev.map((session) =>
+              session.id === message.sessionId
+                ? {
+                    ...session,
+                    activeMode: message.mode,
+                    updatedAt: Date.now()
+                  }
+                : session
+            )
+          );
+          return;
+        }
+        case "composerPrefill": {
+          const text = message.text.trim();
+          if (!text) {
+            return;
+          }
+
+          setActiveSessionId(message.sessionId);
+          setComposerPrefill((prev) => ({
+            nonce: (prev?.nonce ?? 0) + 1,
+            text,
+            append: message.append ?? true
+          }));
           return;
         }
         case "info": {
@@ -138,6 +191,7 @@ export default function App() {
         sessions={sessions}
         activeSessionId={activeSession?.id || ""}
         onCreate={() => postMessage({ type: "createSession" })}
+        onClear={() => postMessage({ type: "clearSessions" })}
         onSelect={(sessionId) => {
           setActiveSessionId(sessionId);
           postMessage({ type: "switchSession", sessionId });
@@ -170,10 +224,41 @@ export default function App() {
         <ChatTimeline messages={activeSession?.messages || []} onRetry={retryLast} />
 
         <Composer
+          sessionId={activeSession?.id}
           running={running}
+          mode={(activeSession?.activeMode || "plan") as ChatMode}
+          modelId={activeSession?.defaultModelId || availableModels[0] || "gemini"}
+          modelOptions={availableModels}
+          slashCommands={slashCommands}
+          mentionCandidates={(activeSession?.attachments || []).map((attachment) => attachment.name)}
           onSubmit={sendPrompt}
           onStop={() => postMessage({ type: "stopGeneration" })}
           onAttach={() => postMessage({ type: "attachFile" })}
+          onSetMode={(mode) =>
+            activeSession?.id &&
+            postMessage({
+              type: "toggleMode",
+              sessionId: activeSession.id,
+              mode
+            })
+          }
+          onSetModel={(modelId) =>
+            activeSession?.id &&
+            postMessage({
+              type: "setModel",
+              sessionId: activeSession.id,
+              modelId
+            })
+          }
+          onAttachFiles={(files) =>
+            activeSession?.id &&
+            postMessage({
+              type: "attachFiles",
+              sessionId: activeSession.id,
+              files
+            })
+          }
+          prefill={composerPrefill}
         />
       </section>
     </div>

@@ -1,4 +1,4 @@
-import { ChatMode } from "../types";
+import { ChatMode, SlashCommandDescriptor } from "../types";
 
 export interface SlashRouteResult {
   rawPrompt: string;
@@ -17,7 +17,7 @@ export interface SlashCommandDefinition {
   requiresAttachment?: boolean;
 }
 
-const COMMAND_REGISTRY: Record<string, SlashCommandDefinition> = {
+const DEFAULT_COMMAND_REGISTRY: Record<string, SlashCommandDefinition> = {
   explain: {
     name: "explain",
     hint: "Explain the provided code and reasoning with concise actionable steps.",
@@ -42,6 +42,43 @@ const COMMAND_REGISTRY: Record<string, SlashCommandDefinition> = {
 };
 
 export class SlashCommandRouter {
+  private commandRegistry: Record<string, SlashCommandDefinition> = { ...DEFAULT_COMMAND_REGISTRY };
+
+  setCustomCommands(custom: Record<string, string | Partial<SlashCommandDescriptor>> | undefined): void {
+    this.commandRegistry = { ...DEFAULT_COMMAND_REGISTRY };
+    if (!custom) {
+      return;
+    }
+
+    for (const [rawName, rawValue] of Object.entries(custom)) {
+      const name = rawName.trim().toLowerCase();
+      if (!name) {
+        continue;
+      }
+
+      if (typeof rawValue === "string") {
+        this.commandRegistry[name] = {
+          name,
+          hint: rawValue,
+          category: "generation"
+        };
+        continue;
+      }
+
+      if (!rawValue || typeof rawValue.hint !== "string" || !rawValue.hint.trim()) {
+        continue;
+      }
+
+      this.commandRegistry[name] = {
+        name,
+        hint: rawValue.hint.trim(),
+        category: rawValue.category || "generation",
+        mode: rawValue.mode,
+        requiresAttachment: rawValue.requiresAttachment
+      };
+    }
+  }
+
   parse(prompt: string): SlashRouteResult {
     const trimmed = prompt.trim();
     if (!trimmed.startsWith("/")) {
@@ -56,7 +93,7 @@ export class SlashCommandRouter {
     const command = head.slice(1).toLowerCase();
     const body = rest.join(" ").trim();
 
-    const definition = COMMAND_REGISTRY[command];
+    const definition = this.commandRegistry[command];
     if (!definition) {
       return {
         rawPrompt: prompt,
@@ -88,10 +125,10 @@ export class SlashCommandRouter {
   }
 
   getSupportedCommands(): string[] {
-    return Object.keys(COMMAND_REGISTRY).map((name) => `/${name}`);
+    return Object.keys(this.commandRegistry).map((name) => `/${name}`);
   }
 
   getCommandRegistry(): Readonly<Record<string, SlashCommandDefinition>> {
-    return COMMAND_REGISTRY;
+    return this.commandRegistry;
   }
 }

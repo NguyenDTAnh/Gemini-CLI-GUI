@@ -166,6 +166,7 @@ export class GeminiChatController {
     }
 
     const session = await this.ensureSession(sessionId);
+    this.syncSlashConfiguration();
     const route = this.slashRouter.parse(prompt);
 
     if (!route.valid && route.command) {
@@ -231,12 +232,18 @@ export class GeminiChatController {
       maxContextChars
     );
 
+    const mentionContext = this.buildMentionContext(prompt, session.attachments);
+    const transformedPrompt = mentionContext
+      ? `${route.transformedPrompt}\n\n${mentionContext}`
+      : route.transformedPrompt;
+
     this.processManager.runRequest({
       requestId,
       cliPath,
       args: resolvedArgs,
+      cwd: vscode.workspace.workspaceFolders?.[0]?.uri.fsPath,
       timeoutMs,
-      prompt: route.transformedPrompt,
+      prompt: transformedPrompt,
       responseLanguage,
       contextText,
       onChunk: (chunk) => {
@@ -360,7 +367,13 @@ export class GeminiChatController {
     }
 
     const config = vscode.workspace.getConfiguration("geminiCliChat");
+    const maxDroppedFileBytes = config.get<number>("maxDroppedFileBytes", 5 * 1024 * 1024);
     const maxAttachedFiles = config.get<number>("maxAttachedFiles", 5);
+    const accepted = files.filter((file) => !file.size || file.size <= maxDroppedFileBytes);
+    if (accepted.length !== files.length) {
+      this.post({ type: "info", message: "Some dropped files were skipped because they are too large." });
+    }
+
     const session = await this.ensureSession(sessionId);
     const available = Math.max(0, maxAttachedFiles - session.attachments.length);
     if (available === 0) {
@@ -368,13 +381,23 @@ export class GeminiChatController {
       return;
     }
 
-    const additions = this.contextCollector.fromDroppedFiles(files).slice(0, available);
+    const additions = this.contextCollector.fromDroppedFiles(accepted).slice(0, available);
     if (additions.length === 0) {
       this.post({ type: "info", message: "No valid files were dropped." });
       return;
     }
 
     await this.attachToSession(session, additions);
+
+    const mentionTokens = additions.map((item) => `@${item.name}`).join(" ");
+    if (mentionTokens) {
+      this.post({
+        type: "composerPrefill",
+        sessionId: session.id,
+        text: mentionTokens,
+        append: true
+      });
+    }
   }
 
   private async insertSelectedContext(
@@ -434,11 +457,18 @@ export class GeminiChatController {
   }
 
   private async pushBootstrap(): Promise<void> {
+    this.syncSlashConfiguration();
+    const commandRegistry = this.slashRouter.getCommandRegistry();
+    const commandDescriptors = Object.values(commandRegistry);
+
     this.post({
       type: "bootstrapped",
       payload: {
         sessions: this.store.getSessions(),
-        activeSessionId: this.store.getActiveSessionId()
+        activeSessionId: this.store.getActiveSessionId(),
+        supportedCommands: this.slashRouter.getSupportedCommands(),
+        commandDescriptors,
+        availableModels: this.getAvailableModels()
       }
     });
   }
@@ -482,5 +512,69 @@ export class GeminiChatController {
 
     next.push("--model", modelId);
     return next;
+  }
+
+  private syncSlashConfiguration(): void {
+    const config = vscode.workspace.getConfiguration("geminiCliChat");
+    const customCommands = config.get<Record<string, string | {
+      hint: string;
+      category?: "analysis" | "generation" | "editing" | "debug";
+      mode?: ChatMode;
+      requiresAttachment?: boolean;
+    }>>("customSlashCommands");
+
+    this.slashRouter.setCustomCommands(customCommands);
+  }
+
+  private getAvailableModels(): string[] {
+    const config = vscode.workspace.getConfiguration("geminiCliChat");
+    const configured = config.get<string[]>("availableModels", []);
+    const defaultArgs = config.get<string[]>("defaultArgs", []);
+    const detected = this.extractModelNameFromArgs(defaultArgs);
+    const unique = new Set<string>();
+
+    for (const item of configured) {
+      const normalized = item.trim();
+      if (normalized) {
+        unique.add(normalized);
+      }
+    }
+
+    if (detected) {
+      unique.add(detected);
+    }
+
+    if (unique.size === 0) {
+      unique.add("gemini");
+    }
+
+    return [...unique];
+  }
+
+  private buildMentionContext(prompt: string, attachments: Attachment[]): string {
+    const matches = [...prompt.matchAll(/(?:^|\s)@([^\s@]+)/g)];
+    if (matches.length === 0 || attachments.length === 0) {
+      return "";
+    }
+
+    const queryTerms = new Set(matches.map((match) => match[1].toLowerCase()));
+    const selected = attachments.filter((attachment) => {
+      const name = attachment.name.toLowerCase();
+      const fsPath = attachment.fsPath.toLowerCase();
+      for (const token of queryTerms) {
+        if (name === token || name.includes(token) || fsPath.includes(token)) {
+          return true;
+        }
+      }
+
+      return false;
+    });
+
+    if (selected.length === 0) {
+      return "";
+    }
+
+    const lines = selected.map((attachment) => `- ${attachment.name} (${attachment.fsPath})`);
+    return ["Referenced files:", ...lines].join("\n");
   }
 }

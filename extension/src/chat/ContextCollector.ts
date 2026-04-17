@@ -32,19 +32,22 @@ export class ContextCollector {
 
     for (const file of files) {
       const fsPath = file.fsPath ?? this.fsPathFromUri(file.uri);
-      if (!fsPath) {
+      if (!fsPath && !file.contentBase64) {
         continue;
       }
 
-      const uri = file.uri ?? vscode.Uri.file(fsPath).toString();
+      const syntheticPath = `__inline__/${randomUUID()}-${file.name || "dropped-file"}`;
+      const resolvedPath = fsPath ?? syntheticPath;
+      const uri = file.uri ?? (fsPath ? vscode.Uri.file(fsPath).toString() : `inline://${encodeURIComponent(file.name || "dropped-file")}`);
       attachments.push({
         id: randomUUID(),
-        name: file.name || fsPath.split("/").pop() || "untitled",
-        fsPath,
+        name: file.name || resolvedPath.split("/").pop() || "untitled",
+        fsPath: resolvedPath,
         uri,
         mimeType: file.mimeType,
         size: file.size,
-        isImage: Boolean(file.mimeType?.startsWith("image/"))
+        isImage: Boolean(file.mimeType?.startsWith("image/")),
+        contentBase64: file.contentBase64
       });
     }
 
@@ -64,10 +67,21 @@ export class ContextCollector {
         break;
       }
 
+      const remaining = Math.max(0, maxChars - used);
+      if (attachment.contentBase64) {
+        const inlineBlock = this.buildInlineBlock(attachment, remaining);
+        if (!inlineBlock) {
+          continue;
+        }
+
+        blocks.push(inlineBlock);
+        used += inlineBlock.length;
+        continue;
+      }
+
       try {
         const bytes = await vscode.workspace.fs.readFile(vscode.Uri.file(attachment.fsPath));
         const text = Buffer.from(bytes).toString("utf8");
-        const remaining = Math.max(0, maxChars - used);
         const clipped = text.slice(0, remaining);
 
         if (!clipped) {
@@ -100,6 +114,47 @@ export class ContextCollector {
       uri: uri.toString(),
       language
     };
+  }
+
+  private buildInlineBlock(attachment: Attachment, maxChars: number): string {
+    if (maxChars <= 0 || !attachment.contentBase64) {
+      return "";
+    }
+
+    if (attachment.isImage || attachment.mimeType?.startsWith("image/")) {
+      const clipped = attachment.contentBase64.slice(0, Math.max(0, maxChars - 120));
+      if (!clipped) {
+        return "";
+      }
+
+      return [
+        `## IMAGE: ${attachment.name}`,
+        `MIME: ${attachment.mimeType || "image/unknown"}`,
+        "```base64",
+        clipped,
+        "```"
+      ].join("\n");
+    }
+
+    let decoded = "";
+    try {
+      decoded = Buffer.from(attachment.contentBase64, "base64").toString("utf8");
+    } catch {
+      return "";
+    }
+
+    const clipped = decoded.slice(0, Math.max(0, maxChars - 80));
+    if (!clipped) {
+      return "";
+    }
+
+    return [
+      `## FILE: ${attachment.name}`,
+      `PATH: ${attachment.fsPath}`,
+      "```",
+      clipped,
+      "```"
+    ].join("\n");
   }
 
   private fsPathFromUri(value?: string): string | undefined {

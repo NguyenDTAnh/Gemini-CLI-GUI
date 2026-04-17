@@ -31,6 +31,15 @@ export interface Attachment {
   size?: number;
   dimensions?: AttachmentDimensions;
   isImage?: boolean;
+  contentBase64?: string;
+}
+
+export interface SlashCommandDescriptor {
+  name: string;
+  hint: string;
+  category: "analysis" | "generation" | "editing" | "debug";
+  mode?: ChatMode;
+  requiresAttachment?: boolean;
 }
 
 export interface ChatMessage {
@@ -60,6 +69,9 @@ export interface ChatSession {
 export interface BootstrapPayload {
   sessions: ChatSession[];
   activeSessionId: string;
+  supportedCommands?: string[];
+  commandDescriptors?: SlashCommandDescriptor[];
+  availableModels?: string[];
 }
 
 export type ExtensionToWebviewMessage =

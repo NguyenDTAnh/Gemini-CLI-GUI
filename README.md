@@ -23,3 +23,12 @@ VS Code extension with an interactive chat UI backed by local Gemini CLI.
 - npm run watch:webview
 - npm run watch:extension
 - npm run package:vsix
+
+## Implemented highlights
+
+- Model switch and Plan/Edit mode controls in composer
+- Session clear action in session dropdown
+- Drag and drop files/images into composer
+- @mention attached files and slash workflow suggestions
+- Custom slash workflows via extension settings
+- Runtime unit/integration tests runnable with npm test

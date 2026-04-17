@@ -1,4 +1,4 @@
-import { Plus, ChevronDown, MessageSquare } from "lucide-react";
+import { Plus, ChevronDown, MessageSquare, Trash2 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { ChatSession } from "../types";
 
@@ -7,9 +7,10 @@ interface SessionSidebarProps {
   activeSessionId: string;
   onCreate: () => void;
   onSelect: (sessionId: string) => void;
+  onClear: () => void;
 }
 
-export function SessionSidebar({ sessions, activeSessionId, onCreate, onSelect }: SessionSidebarProps) {
+export function SessionSidebar({ sessions, activeSessionId, onCreate, onSelect, onClear }: SessionSidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const activeSession = sessions.find(s => s.id === activeSessionId) || sessions[0];
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -38,9 +39,14 @@ export function SessionSidebar({ sessions, activeSessionId, onCreate, onSelect }
         <div className="session-dropdown">
           <div className="dropdown-header">
             <span>Recent Sessions</span>
-            <button className="new-session-mini-btn" onClick={() => { onCreate(); setIsOpen(false); }}>
-              <Plus size={14} />
-            </button>
+            <div className="dropdown-actions">
+              <button className="new-session-mini-btn" onClick={() => { onCreate(); setIsOpen(false); }} title="New session">
+                <Plus size={14} />
+              </button>
+              <button className="clear-session-mini-btn" onClick={() => { onClear(); setIsOpen(false); }} title="Clear all sessions">
+                <Trash2 size={14} />
+              </button>
+            </div>
           </div>
           <div className="session-scroll-list">
             {sessions.map((session) => {

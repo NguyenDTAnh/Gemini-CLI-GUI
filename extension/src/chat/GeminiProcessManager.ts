@@ -4,6 +4,7 @@ interface RunRequestOptions {
   requestId: string;
   cliPath: string;
   args: string[];
+  cwd?: string;
   timeoutMs: number;
   prompt: string;
   responseLanguage: string;
@@ -42,7 +43,10 @@ export class GeminiProcessManager {
 
     let process: ChildProcessWithoutNullStreams;
     try {
-      process = spawn(options.cliPath, resolvedArgs, { stdio: "pipe" });
+      process = spawn(options.cliPath, resolvedArgs, { 
+        stdio: "pipe",
+        cwd: options.cwd
+      });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       options.onError(`Cannot start Gemini CLI: ${message}`);

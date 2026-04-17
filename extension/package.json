@@ -80,6 +80,21 @@
           "default": [],
           "description": "Default arguments appended to each Gemini CLI request. Use {{prompt}} to inject full prompt payload into args instead of stdin."
         },
+        "geminiCliChat.availableModels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "gemini"
+          ],
+          "description": "Model list shown in chat UI selector. Values are passed to --model."
+        },
+        "geminiCliChat.customSlashCommands": {
+          "type": "object",
+          "default": {},
+          "description": "Custom slash workflows map. Example: { \"refactor\": \"Suggest a safe refactor plan\" }."
+        },
         "geminiCliChat.maxContextChars": {
           "type": "number",
           "default": 16000,
@@ -92,6 +107,12 @@
           "minimum": 1,
           "maximum": 20,
           "description": "Maximum files attached in one request."
+        },
+        "geminiCliChat.maxDroppedFileBytes": {
+          "type": "number",
+          "default": 5242880,
+          "minimum": 1024,
+          "description": "Maximum bytes allowed per dropped file in composer."
         },
         "geminiCliChat.requestTimeoutMs": {
           "type": "number",
@@ -113,7 +134,7 @@
     "watch": "tsc -p . -w",
     "prepackage": "npm run build",
     "package": "npm run prepackage && npx @vscode/vsce package",
-    "test": "echo 'No automated extension tests wired yet'"
+    "test": "npm run build:extension && node --test ../tests/unit/*.test.cjs ../tests/integration/*.test.cjs"
   },
   "devDependencies": {
     "@types/node": "^20.14.12",
