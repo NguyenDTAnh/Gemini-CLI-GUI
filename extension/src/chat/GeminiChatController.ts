@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import * as path from "node:path";
 import * as vscode from "vscode";
 import { ContextCollector } from "./ContextCollector";
 import { GeminiProcessManager } from "./GeminiProcessManager";
@@ -227,6 +228,8 @@ export class GeminiChatController {
     const timeoutMs = config.get<number>("requestTimeoutMs", 120000);
     const responseLanguage = config.get<string>("responseLanguage", "vi");
 
+    await this.resolveMentionAttachments(prompt, session, maxAttachedFiles);
+
     const contextText = await this.contextCollector.buildContext(
       session.attachments.slice(0, maxAttachedFiles),
       maxContextChars
@@ -410,7 +413,7 @@ export class GeminiChatController {
       return;
     }
 
-    const additions = this.contextCollector.fromDroppedFiles(accepted).slice(0, available);
+    const additions = (await this.contextCollector.fromDroppedFiles(accepted, available)).slice(0, available);
     if (additions.length === 0) {
       this.post({ type: "info", message: "No valid files were dropped." });
       return;
@@ -573,6 +576,143 @@ export class GeminiChatController {
     const source = configuredModels.length > 0 ? configuredModels : fallbackModels;
     const normalized = source.filter((item) => item !== "auto" && item !== "manual");
     return [...new Set(["auto", ...normalized, "manual"] )];
+  }
+
+  private async resolveMentionAttachments(prompt: string, session: ChatSession, maxAttachedFiles: number): Promise<void> {
+    const mentionMatches = [...prompt.matchAll(/(?:^|\s)@([^\s@]+)/g)];
+    if (mentionMatches.length === 0) {
+      return;
+    }
+
+    const available = Math.max(0, maxAttachedFiles - session.attachments.length);
+    if (available === 0) {
+      return;
+    }
+
+    const tokens = [...new Set(mentionMatches.map((match) => this.normalizeMentionToken(match[1])).filter(Boolean))] as string[];
+    if (tokens.length === 0) {
+      return;
+    }
+
+    const existing = new Set(session.attachments.map((item) => item.fsPath.toLowerCase()));
+    const additions: Attachment[] = [];
+
+    for (const token of tokens) {
+      if (additions.length >= available) {
+        break;
+      }
+
+      const candidates = await this.findWorkspaceFilesForMention(token, 25);
+      const picked = candidates.find((uri) => {
+        const key = uri.fsPath.toLowerCase();
+        return !existing.has(key);
+      });
+
+      if (!picked) {
+        continue;
+      }
+
+      const key = picked.fsPath.toLowerCase();
+      existing.add(key);
+      additions.push({
+        id: randomUUID(),
+        name: picked.path.split("/").pop() || "untitled",
+        fsPath: picked.fsPath,
+        uri: picked.toString()
+      });
+    }
+
+    if (additions.length > 0) {
+      await this.attachToSession(session, additions);
+    }
+  }
+
+  private normalizeMentionToken(token: string): string {
+    const stripped = token
+      .trim()
+      .replace(/^["'`([{]+/, "")
+      .replace(/["'`\])}.,;:!?]+$/, "")
+      .replace(/^@+/, "");
+
+    return stripped;
+  }
+
+  private async findWorkspaceFilesForMention(token: string, maxResults: number): Promise<vscode.Uri[]> {
+    const sanitized = token.replace(/[\\[\]{}*?]/g, "").trim();
+    if (!sanitized) {
+      return [];
+    }
+
+    const direct = await this.resolveDirectMentionPath(sanitized);
+    if (direct) {
+      return [direct];
+    }
+
+    const include = `**/*${sanitized}*`;
+    const exclude = "**/{.git,node_modules,dist,build,out,coverage,.next,.turbo}/**";
+
+    const uris = await vscode.workspace.findFiles(include, exclude, maxResults);
+    const scored = uris
+      .filter((uri) => uri.scheme === "file")
+      .map((uri) => ({ uri, score: this.scoreMentionCandidate(sanitized, uri) }))
+      .sort((a, b) => b.score - a.score)
+      .map((entry) => entry.uri);
+
+    return scored;
+  }
+
+  private async resolveDirectMentionPath(token: string): Promise<vscode.Uri | undefined> {
+    const candidates: string[] = [];
+
+    if (path.isAbsolute(token)) {
+      candidates.push(token);
+    }
+
+    for (const folder of vscode.workspace.workspaceFolders || []) {
+      candidates.push(path.resolve(folder.uri.fsPath, token));
+    }
+
+    for (const candidate of candidates) {
+      const uri = vscode.Uri.file(candidate);
+      try {
+        const stat = await vscode.workspace.fs.stat(uri);
+        if (stat.type === vscode.FileType.File) {
+          return uri;
+        }
+      } catch {
+        // Ignore missing paths and continue with fallback search.
+      }
+    }
+
+    return undefined;
+  }
+
+  private scoreMentionCandidate(token: string, uri: vscode.Uri): number {
+    const lowerToken = token.toLowerCase();
+    const relative = vscode.workspace.asRelativePath(uri, false).toLowerCase();
+    const base = uri.path.split("/").pop()?.toLowerCase() || "";
+
+    if (base === lowerToken) {
+      return 100;
+    }
+
+    if (base.startsWith(lowerToken)) {
+      return 80;
+    }
+
+    if (relative.endsWith(`/${lowerToken}`)) {
+      return 75;
+    }
+
+    if (base.includes(lowerToken)) {
+      return 60;
+    }
+
+    if (relative.includes(`/${lowerToken}/`) || relative.includes(lowerToken)) {
+      return 40;
+    }
+
+    return 10;
   }
 
   private buildMentionContext(prompt: string, attachments: Attachment[]): string {

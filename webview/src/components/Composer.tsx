@@ -3,6 +3,29 @@ import { Paperclip, SendHorizonal, Square } from "lucide-react";
 import { Attachment, ChatMode, DroppedFilePayload } from "../types";
 import { ModelSelector } from "./ModelSelector";
 
+interface WebkitFileSystemEntry {
+  isFile: boolean;
+  isDirectory: boolean;
+  name: string;
+}
+
+interface WebkitFileSystemFileEntry extends WebkitFileSystemEntry {
+  file: (successCallback: (file: File) => void, errorCallback?: (error: DOMException) => void) => void;
+}
+
+interface WebkitFileSystemDirectoryEntry extends WebkitFileSystemEntry {
+  createReader: () => {
+    readEntries: (
+      successCallback: (entries: WebkitFileSystemEntry[]) => void,
+      errorCallback?: (error: DOMException) => void
+    ) => void;
+  };
+}
+
+interface WebkitDataTransferItem extends DataTransferItem {
+  webkitGetAsEntry?: () => WebkitFileSystemEntry | null;
+}
+
 interface ComposerProps {
   sessionId?: string;
   running: boolean;
@@ -49,6 +72,119 @@ async function toDroppedPayload(file: File): Promise<DroppedFilePayload> {
     size: file.size,
     contentBase64
   };
+}
+
+async function readFileEntry(entry: WebkitFileSystemFileEntry): Promise<File | null> {
+  return new Promise((resolve) => {
+    entry.file(
+      (file) => resolve(file),
+      () => resolve(null)
+    );
+  });
+}
+
+async function readDirectoryEntries(entry: WebkitFileSystemDirectoryEntry): Promise<WebkitFileSystemEntry[]> {
+  const reader = entry.createReader();
+  const all: WebkitFileSystemEntry[] = [];
+
+  // Chromium directory readers return entries in chunks.
+  while (true) {
+    const chunk = await new Promise<WebkitFileSystemEntry[]>((resolve) => {
+      reader.readEntries(
+        (entries) => resolve(entries),
+        () => resolve([])
+      );
+    });
+
+    if (chunk.length === 0) {
+      break;
+    }
+
+    all.push(...chunk);
+  }
+
+  return all;
+}
+
+async function entryToFiles(entry: WebkitFileSystemEntry): Promise<File[]> {
+  if (entry.isFile) {
+    const file = await readFileEntry(entry as WebkitFileSystemFileEntry);
+    return file ? [file] : [];
+  }
+
+  if (!entry.isDirectory) {
+    return [];
+  }
+
+  const children = await readDirectoryEntries(entry as WebkitFileSystemDirectoryEntry);
+  const nested = await Promise.all(children.map((child) => entryToFiles(child)));
+  return nested.flat();
+}
+
+async function collectDroppedFiles(dataTransfer: DataTransfer): Promise<File[]> {
+  const initial = Array.from(dataTransfer.files || []);
+  if (initial.length > 0) {
+    return initial;
+  }
+
+  const items = Array.from(dataTransfer.items || []) as WebkitDataTransferItem[];
+  const directFiles = items
+    .map((item) => item.getAsFile())
+    .filter((item): item is File => Boolean(item));
+
+  const entryRoots = items
+    .map((item) => item.webkitGetAsEntry?.())
+    .filter((entry): entry is WebkitFileSystemEntry => Boolean(entry));
+
+  if (entryRoots.length === 0) {
+    return directFiles;
+  }
+
+  const nestedFiles = (await Promise.all(entryRoots.map((entry) => entryToFiles(entry)))).flat();
+  const deduped = new Map<string, File>();
+
+  for (const file of [...directFiles, ...nestedFiles]) {
+    const key = `${file.name}:${file.size}:${file.lastModified}`;
+    if (!deduped.has(key)) {
+      deduped.set(key, file);
+    }
+  }
+
+  return [...deduped.values()];
+}
+
+function getNameFromUri(value: string): string {
+  try {
+    const parsed = new URL(value);
+    const path = decodeURIComponent(parsed.pathname || "");
+    return path.split("/").filter(Boolean).pop() || value;
+  } catch {
+    const normalized = value.replace(/^file:\/\//, "");
+    return normalized.split("/").filter(Boolean).pop() || value;
+  }
+}
+
+function parseDroppedPathPayloads(dataTransfer: DataTransfer): DroppedFilePayload[] {
+  const uriListRaw = dataTransfer.getData("text/uri-list") || "";
+  const plainRaw = dataTransfer.getData("text/plain") || "";
+  const lines = `${uriListRaw}\n${plainRaw}`
+    .split(/\r?\n/g)
+    .map((item) => item.trim())
+    .filter((item) => item && !item.startsWith("#"));
+
+  const payloads: DroppedFilePayload[] = [];
+  for (const line of lines) {
+    if (line.startsWith("file://")) {
+      payloads.push({ name: getNameFromUri(line), uri: line });
+      continue;
+    }
+
+    if (line.startsWith("/")) {
+      payloads.push({ name: line.split("/").pop() || line, fsPath: line });
+    }
+  }
+
+  return payloads;
 }
 
 const StopIcon = ({ size = 16 }: { size?: number }) => (
@@ -157,16 +293,25 @@ export function Composer({
       return;
     }
 
-    const files = Array.from(event.dataTransfer.files || []);
-    if (files.length === 0) {
+    const files = await collectDroppedFiles(event.dataTransfer);
+    const filePayloads = files.length > 0
+      ? await Promise.all(files.map((file) => toDroppedPayload(file)))
+      : [];
+    const uriPayloads = parseDroppedPathPayloads(event.dataTransfer);
+    const payloads = [...filePayloads, ...uriPayloads];
+
+    if (payloads.length === 0) {
       return;
     }
 
     try {
-      const payloads = await Promise.all(files.map((file) => toDroppedPayload(file)));
       onAttachFiles(payloads);
 
-      const mentions = files.map((file) => `@${file.name}`).join(" ");
+      const mentions = payloads
+        .map((item) => item.name?.trim())
+        .filter((item): item is string => Boolean(item))
+        .map((name) => `@${name}`)
+        .join(" ");
       if (mentions) {
         setValue((previous) => (previous.trim() ? `${previous.trimEnd()}\n${mentions}` : mentions));
       }

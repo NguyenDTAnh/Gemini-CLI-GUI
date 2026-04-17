@@ -27,11 +27,37 @@ export class ContextCollector {
     return this.toAttachment(editor.document.uri, editor.document.languageId);
   }
 
-  fromDroppedFiles(files: DroppedFilePayload[]): Attachment[] {
+  async fromDroppedFiles(files: DroppedFilePayload[], maxItems = Number.POSITIVE_INFINITY): Promise<Attachment[]> {
     const attachments: Attachment[] = [];
 
     for (const file of files) {
+      if (attachments.length >= maxItems) {
+        break;
+      }
+
       const fsPath = file.fsPath ?? this.fsPathFromUri(file.uri);
+
+      if (fsPath) {
+        const droppedUri = vscode.Uri.file(fsPath);
+        const fileType = await this.tryGetFileType(droppedUri);
+        if (fileType === vscode.FileType.Directory) {
+          const remaining = Math.max(0, maxItems - attachments.length);
+          if (remaining === 0) {
+            break;
+          }
+
+          const nestedFiles = await this.collectFilesFromDirectory(droppedUri, remaining);
+          for (const nestedUri of nestedFiles) {
+            attachments.push(this.toAttachment(nestedUri));
+            if (attachments.length >= maxItems) {
+              break;
+            }
+          }
+
+          continue;
+        }
+      }
+
       if (!fsPath && !file.contentBase64) {
         continue;
       }
@@ -52,6 +78,52 @@ export class ContextCollector {
     }
 
     return attachments;
+  }
+
+  private async tryGetFileType(uri: vscode.Uri): Promise<vscode.FileType | undefined> {
+    try {
+      const stat = await vscode.workspace.fs.stat(uri);
+      return stat.type;
+    } catch {
+      return undefined;
+    }
+  }
+
+  private async collectFilesFromDirectory(root: vscode.Uri, limit: number): Promise<vscode.Uri[]> {
+    const files: vscode.Uri[] = [];
+    const stack: vscode.Uri[] = [root];
+
+    while (stack.length > 0 && files.length < limit) {
+      const current = stack.pop();
+      if (!current) {
+        break;
+      }
+
+      let entries: [string, vscode.FileType][] = [];
+      try {
+        entries = await vscode.workspace.fs.readDirectory(current);
+      } catch {
+        continue;
+      }
+
+      for (const [name, type] of entries) {
+        if (files.length >= limit) {
+          break;
+        }
+
+        const child = vscode.Uri.joinPath(current, name);
+        if (type === vscode.FileType.Directory) {
+          stack.push(child);
+          continue;
+        }
+
+        if (type === vscode.FileType.File) {
+          files.push(child);
+        }
+      }
+    }
+
+    return files;
   }
 
   async buildContext(attachments: Attachment[], maxChars: number): Promise<string> {
