@@ -17,28 +17,32 @@ interface MessageItemProps {
 
 export function MessageItem({ message, onRetry }: MessageItemProps) {
   const isAssistant = message.role === "assistant";
+const parts = useMemo(() => {
+  const content = message.content || "";
+  const segments: { type: "text" | "diff" | "subagent" | "loading"; content: string }[] = [];
 
-  // Tách nội dung thành các phần text, diff và subagent
-  const parts = useMemo(() => {
-    const content = message.content || "";
-    if (!content && message.status === "streaming") {
-      return [{ type: "loading", content: "" }];
-    }
-
+  if (content) {
     const regex = /(?=diff --git|--- [ai]\/|\[Subagent:|<subagent )/g;
-    const segments = content.split(regex);
-    
-    return segments.filter(s => s.trim()).map(s => {
-      if (s.startsWith("diff --git") || s.startsWith("---")) {
-        return { type: "diff", content: s.trim() };
-      }
-      if (s.startsWith("[Subagent:") || s.startsWith("<subagent")) {
-        return { type: "subagent", content: s.trim() };
-      }
-      return { type: "text", content: s.trim() };
-    });
-  }, [message.content, message.status]);
+    const splitSegments = content.split(regex);
 
+    splitSegments.filter(s => s.trim()).forEach(s => {
+      if (s.startsWith("diff --git") || s.startsWith("---")) {
+        segments.push({ type: "diff", content: s.trim() });
+      } else if (s.startsWith("[Subagent:") || s.startsWith("<subagent")) {
+        segments.push({ type: "subagent", content: s.trim() });
+      } else {
+        segments.push({ type: "text", content: s.trim() });
+      }
+    });
+  }
+
+  // Luôn thêm loading part ở cuối nếu đang streaming
+  if (message.status === "streaming") {
+    segments.push({ type: "loading", content: "" });
+  }
+
+  return segments;
+}, [message.content, message.status]);
   const diffParts = useMemo(() => parts.filter(p => p.type === "diff").map(p => p.content), [parts]);
 
   return (

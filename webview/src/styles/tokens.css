@@ -35,44 +35,131 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   margin: 0;
 }
 
-.app-shell { height: 100%; display: flex; width: 100%; font-family: inherit; }
+.app-shell { height: 100%; display: flex; flex-direction: column; width: 100%; overflow: hidden; }
 
-.session-sidebar {
-  width: 240px;
-  display: flex;
-  flex-direction: column;
-  border-right: 1px solid var(--line);
+/* Session Selector Styles */
+.session-selector {
+  position: sticky;
+  top: 0;
+  z-index: 100;
   background: var(--bg-0);
+  border-bottom: 1px solid var(--line);
+  padding: 0; /* Full width */
 }
 
-.sidebar-head { padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; }
-
-.session-list { padding: 4px; display: flex; flex-direction: column; gap: 1px; overflow: auto; }
-
-.session-item {
+.current-session-btn {
   all: unset;
   cursor: pointer;
-  border-radius: 4px;
-  padding: 6px 8px;
   display: flex;
-  flex-direction: column;
-  gap: 1px;
+  align-items: center;
+  gap: 8px;
+  width: calc(100% - 24px);
+  padding: 10px 12px;
+  background: transparent;
+  transition: opacity 0.2s;
+}
+
+.current-session-btn:hover {
+  background: transparent;
+}
+
+.session-icon { color: var(--brand); opacity: 0.8; flex-shrink: 0; }
+
+.current-session-title {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--ink);
+}
+
+.chevron {
+  color: var(--muted);
+  opacity: 0.5;
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+.session-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: rgba(30, 31, 32, 0.98);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  border-bottom: 1px solid var(--line);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+  animation: dropdown-in 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes dropdown-in {
+  from { opacity: 0; transform: translateY(-10px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.dropdown-header {
+  padding: 10px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.new-session-mini-btn {
+  all: unset;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  color: var(--brand);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   transition: background 0.2s;
 }
 
-.session-item:hover { background: rgba(255, 255, 255, 0.04); }
-.session-item.selected { background: rgba(168, 199, 250, 0.08); }
+.new-session-mini-btn:hover { background: rgba(168, 199, 250, 0.1); }
 
-.session-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--ink); }
-.session-meta { color: var(--muted); }
+.session-scroll-list {
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 4px;
+}
 
-.chat-panel { flex: 1; display: flex; flex-direction: column; background: var(--bg-0); position: relative; }
+.dropdown-item {
+  all: unset;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  padding: 8px 12px;
+  border-radius: 6px;
+  width: calc(100% - 24px);
+  transition: all 0.15s;
+}
 
-.chat-header { padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; }
+.dropdown-item:hover { background: rgba(255, 255, 255, 0.05); }
+.dropdown-item.selected { background: rgba(168, 199, 250, 0.08); }
 
-.chat-header p { display: none; }
+.item-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
-.header-actions { display: flex; gap: 2px; }
+.item-meta { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+.chat-panel { flex: 1; display: flex; flex-direction: column; background: var(--bg-0); position: relative; min-height: 0; }
 
 .timeline {
   flex: 1;
@@ -178,7 +265,7 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   width: fit-content;
 }
 
-.message-bubble.assistant.diff {
+.message-bubble.assistant.diff, .message-bubble.assistant.loading {
   width: 100%;
   padding: 0;
   background: transparent;
@@ -560,6 +647,5 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
 }
 
 @media (max-width: 880px) {
-  .app-shell { flex-direction: column; }
-  .session-sidebar { width: 100%; max-height: 150px; border-right: none; border-bottom: 1px solid var(--line); }
+  .session-sidebar { display: none; }
 }

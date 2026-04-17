@@ -145,16 +145,6 @@ export default function App() {
       />
 
       <section className="chat-panel">
-        <header className="chat-header">
-          <div>
-            <h1>{activeSession?.title || "Gemini CLI Chat"}</h1>
-            <p>Interactive chat over local Gemini CLI process</p>
-          </div>
-
-          <div className="header-actions">
-          </div>
-        </header>
-
         {banner && <div className={`banner ${banner.kind}`}>{banner.text}</div>}
 
         <div className="attachment-strip">
