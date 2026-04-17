@@ -58,18 +58,18 @@ export function Composer({ running, onSubmit, onStop, onAttach }: ComposerProps)
 
       <div className="composer-actions">
         <button type="button" className="ghost-btn" onClick={onAttach} title="Attach file">
-          <Paperclip size={20} />
+          <Paperclip size={18} />
         </button>
 
         {!running && (
           <button type="submit" className="primary-btn" title="Send message">
-            <SendHorizonal size={20} />
+            <SendHorizonal size={18} />
           </button>
         )}
 
         {running && (
           <button type="button" className="danger-btn" onClick={onStop} title="Stop generation">
-            <Square size={20} />
+            <Square size={18} />
           </button>
         )}
       </div>
