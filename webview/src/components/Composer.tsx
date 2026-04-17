@@ -1,6 +1,7 @@
 import { DragEvent, FormEvent, useEffect, useMemo, useState } from "react";
 import { Paperclip, SendHorizonal, Square } from "lucide-react";
 import { Attachment, ChatMode, DroppedFilePayload } from "../types";
+import { ModelSelector } from "./ModelSelector";
 
 interface ComposerProps {
   sessionId?: string;
@@ -87,7 +88,6 @@ export function Composer({
 
   const resolvedModelOptions = useMemo(() => {
     const list = [...modelOptions, modelId].filter((item) => Boolean(item.trim()));
-    // If not in modelOptions already, and not manual/auto, we want to keep the custom modelId in the list
     return [...new Set(list)];
   }, [modelOptions, modelId]);
 
@@ -96,25 +96,6 @@ export function Composer({
     const others = resolvedModelOptions.filter((o) => !core.includes(o));
     return [...core, ...others];
   }, [resolvedModelOptions]);
-
-  const modelOptionLabel = (option: string) => {
-    if (option === "auto") {
-      return "Auto (Default)";
-    }
-
-    if (option === "manual") {
-      return "Manual Model ID...";
-    }
-
-    if (option === "gemini-3.1-pro-preview") return "Gemini 3.1 Pro";
-    if (option === "gemini-3-flash-preview") return "Gemini 3 Flash";
-    if (option === "gemini-3.1-flash-lite-preview") return "Gemini 3.1 Flash Lite";
-    if (option === "gemini-2.5-pro") return "Gemini 2.5 Pro";
-    if (option === "gemini-2.5-flash") return "Gemini 2.5 Flash";
-    if (option === "gemini-2.5-flash-lite") return "Gemini 2.5 Flash Lite";
-
-    return option;
-  };
 
   const slashSuggestions = useMemo(() => {
     if (!value.trimStart().startsWith("/")) {
@@ -274,34 +255,26 @@ export function Composer({
           </button>
 
           <button type="button" className="ghost-btn" onClick={onAttach} title="Attach file">
-            <Paperclip size={18} />
+            <Paperclip size={14} />
           </button>
 
-          <div className="model-selector-mini">
-            <select
-              value={modelId}
-              onChange={(event) => onSetModel(event.target.value)}
-              title={`Current model: ${modelLabel}`}
-            >
-              {sortedOptions.map((item) => (
-                <option key={item} value={item}>
-                  {modelOptionLabel(item)}
-                </option>
-              ))}
-            </select>
-          </div>
+          <ModelSelector 
+            modelId={modelId} 
+            modelOptions={sortedOptions} 
+            onSelect={onSetModel} 
+          />
         </div>
 
         <div className="action-right-group">
           {!running && (
             <button type="submit" className="primary-btn" title="Send message">
-              <SendHorizonal size={18} />
+              <SendHorizonal size={14} />
             </button>
           )}
 
           {running && (
             <button type="button" className="danger-btn" onClick={onStop} title="Stop generation">
-              <Square size={18} />
+              <Square size={14} />
             </button>
           )}
         </div>
