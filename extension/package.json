@@ -1,0 +1,113 @@
+{
+  "name": "gemini-cli-chat-ext",
+  "displayName": "Gemini CLI Chat",
+  "description": "Interactive chat UI in VS Code backed by local Gemini CLI.",
+  "version": "0.1.0",
+  "publisher": "local",
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "geminiCliChat",
+          "title": "Gemini",
+          "icon": "resources/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "geminiCliChat": [
+        {
+          "id": "geminiCliChat.views.main",
+          "name": "Chat",
+          "type": "webview"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "geminiCliChat.openChat",
+        "title": "Gemini Chat: Focus Chat"
+      },
+      {
+        "command": "geminiCliChat.newSession",
+        "title": "Gemini Chat: New Session"
+      },
+      {
+        "command": "geminiCliChat.stopGeneration",
+        "title": "Gemini Chat: Stop Generation"
+      },
+      {
+        "command": "geminiCliChat.attachActiveFile",
+        "title": "Gemini Chat: Attach Active File"
+      },
+      {
+        "command": "geminiCliChat.clearSessions",
+        "title": "Gemini Chat: Clear All Sessions"
+      }
+    ],
+    "configuration": {
+      "title": "Gemini CLI Chat",
+      "properties": {
+        "geminiCliChat.cliPath": {
+          "type": "string",
+          "default": "gemini",
+          "description": "Path to Gemini CLI binary."
+        },
+        "geminiCliChat.defaultArgs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Default arguments appended to each Gemini CLI request. Use {{prompt}} to inject full prompt payload into args instead of stdin."
+        },
+        "geminiCliChat.maxContextChars": {
+          "type": "number",
+          "default": 16000,
+          "minimum": 1000,
+          "description": "Maximum character budget for attached file context."
+        },
+        "geminiCliChat.maxAttachedFiles": {
+          "type": "number",
+          "default": 5,
+          "minimum": 1,
+          "maximum": 20,
+          "description": "Maximum files attached in one request."
+        },
+        "geminiCliChat.requestTimeoutMs": {
+          "type": "number",
+          "default": 120000,
+          "minimum": 10000,
+          "description": "Timeout in milliseconds for a Gemini CLI request."
+        },
+        "geminiCliChat.responseLanguage": {
+          "type": "string",
+          "default": "vi",
+          "description": "Language hint appended to prompts."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "npm --prefix ../webview run build && npm run build:extension",
+    "build:extension": "tsc -p .",
+    "watch": "tsc -p . -w",
+    "prepackage": "npm run build",
+    "package": "npm run prepackage && npx @vscode/vsce package",
+    "test": "echo 'No automated extension tests wired yet'"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.12",
+    "@types/vscode": "^1.95.0",
+    "@vscode/test-electron": "^2.4.1",
+    "@vscode/vsce": "^3.3.2",
+    "typescript": "^5.6.3"
+  }
+}

@@ -1,0 +1,18 @@
+# Node and build outputs
+node_modules/
+**/node_modules/
+*.vsix
+
+# Build artifacts
+extension/dist/
+extension/media/
+webview/dist/
+
+# VS Code test artifacts
+.vscode-test/
+
+# Python cache
+**/__pycache__/
+
+# OS
+.DS_Store

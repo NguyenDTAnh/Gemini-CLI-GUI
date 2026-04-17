@@ -1,0 +1,15 @@
+{
+  "name": "gemini-cli-chat-ext-workspace",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "bootstrap": "npm --prefix webview install && npm --prefix extension install",
+    "build": "npm --prefix extension run build",
+    "build:webview": "npm --prefix webview run build",
+    "build:extension": "npm --prefix extension run build:extension",
+    "watch:webview": "npm --prefix webview run build:watch",
+    "watch:extension": "npm --prefix extension run watch",
+    "package:vsix": "npm --prefix extension run package",
+    "test": "npm --prefix extension run test"
+  }
+}
