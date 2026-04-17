@@ -338,13 +338,42 @@ export class GeminiChatController {
   }
 
   private async setModel(sessionId: string, modelId: string): Promise<void> {
-    const nextModel = modelId.trim();
-    if (!nextModel) {
-      this.post({ type: "info", message: "Model id is required." });
+    const session = await this.ensureSession(sessionId);
+    if (modelId === "auto") {
+      session.defaultModelId = undefined;
+      session.updatedAt = Date.now();
+      await this.store.upsertSession(session);
+      this.post({ type: "sessionUpdated", session });
+      this.post({ type: "modelUpdated", sessionId: session.id, modelId: "" });
       return;
     }
 
-    const session = await this.ensureSession(sessionId);
+    let nextModel = modelId.trim();
+    if (modelId === "manual") {
+      const picked = await vscode.window.showInputBox({
+        title: "Select Gemini model",
+        prompt: "Enter the Gemini CLI model id to use (e.g. gemini-3.1-pro-preview)",
+        placeHolder: "gemini-3.1-pro-preview",
+        value: session.defaultModelId || ""
+      });
+
+      if (picked === undefined) {
+        // User cancelled, keep current selection in UI if possible, 
+        // but we need to notify webview to reset its state.
+        this.post({ type: "sessionUpdated", session });
+        return;
+      }
+
+      nextModel = (picked || "").trim();
+    }
+
+    if (!nextModel) {
+      this.post({ type: "info", message: "Model id is required." });
+      // Reset UI to previous valid state
+      this.post({ type: "sessionUpdated", session });
+      return;
+    }
+
     session.defaultModelId = nextModel;
     session.updatedAt = Date.now();
     await this.store.upsertSession(session);
@@ -527,28 +556,7 @@ export class GeminiChatController {
   }
 
   private getAvailableModels(): string[] {
-    const config = vscode.workspace.getConfiguration("geminiCliChat");
-    const configured = config.get<string[]>("availableModels", []);
-    const defaultArgs = config.get<string[]>("defaultArgs", []);
-    const detected = this.extractModelNameFromArgs(defaultArgs);
-    const unique = new Set<string>();
-
-    for (const item of configured) {
-      const normalized = item.trim();
-      if (normalized) {
-        unique.add(normalized);
-      }
-    }
-
-    if (detected) {
-      unique.add(detected);
-    }
-
-    if (unique.size === 0) {
-      unique.add("gemini");
-    }
-
-    return [...unique];
+    return ["auto", "manual"];
   }
 
   private buildMentionContext(prompt: string, attachments: Attachment[]): string {

@@ -1,4 +1,4 @@
-import { parseDiff, Diff, Hunk, Header } from "react-diff-view";
+import { parseDiff, Diff, Hunk } from "react-diff-view";
 import "react-diff-view/style/index.css";
 
 interface DiffViewerProps {
@@ -15,7 +15,7 @@ export function DiffViewer({ diffText }: DiffViewerProps) {
           <div className="diff-file-header">
             <span>{file.newPath}</span>
           </div>
-          <Diff viewType="split" diffType={file.type} hunks={file.hunks}>
+          <Diff viewType="inline" diffType={file.type} hunks={file.hunks}>
             {(hunks) => hunks.map((hunk) => <Hunk key={hunk.content} hunk={hunk} />)}
           </Diff>
         </div>

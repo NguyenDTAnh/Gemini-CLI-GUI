@@ -1,15 +1,17 @@
 import { DragEvent, FormEvent, useEffect, useMemo, useState } from "react";
 import { Paperclip, SendHorizonal, Square } from "lucide-react";
-import { ChatMode, DroppedFilePayload } from "../types";
+import { Attachment, ChatMode, DroppedFilePayload } from "../types";
 
 interface ComposerProps {
   sessionId?: string;
   running: boolean;
   mode: ChatMode;
   modelId: string;
+  modelLabel: string;
   modelOptions: string[];
   slashCommands: string[];
   mentionCandidates: string[];
+  attachments: Attachment[];
   onSubmit: (prompt: string) => void;
   onStop: () => void;
   onAttach: () => void;
@@ -53,9 +55,11 @@ export function Composer({
   running,
   mode,
   modelId,
+  modelLabel,
   modelOptions,
   slashCommands,
   mentionCandidates,
+  attachments,
   onSubmit,
   onStop,
   onAttach,
@@ -83,8 +87,34 @@ export function Composer({
 
   const resolvedModelOptions = useMemo(() => {
     const list = [...modelOptions, modelId].filter((item) => Boolean(item.trim()));
+    // If not in modelOptions already, and not manual/auto, we want to keep the custom modelId in the list
     return [...new Set(list)];
   }, [modelOptions, modelId]);
+
+  const sortedOptions = useMemo(() => {
+    const core = ["auto", "manual"];
+    const others = resolvedModelOptions.filter((o) => !core.includes(o));
+    return [...core, ...others];
+  }, [resolvedModelOptions]);
+
+  const modelOptionLabel = (option: string) => {
+    if (option === "auto") {
+      return "Auto (Default)";
+    }
+
+    if (option === "manual") {
+      return "Manual Model ID...";
+    }
+
+    if (option === "gemini-3.1-pro-preview") return "Gemini 3.1 Pro";
+    if (option === "gemini-3-flash-preview") return "Gemini 3 Flash";
+    if (option === "gemini-3.1-flash-lite-preview") return "Gemini 3.1 Flash Lite";
+    if (option === "gemini-2.5-pro") return "Gemini 2.5 Pro";
+    if (option === "gemini-2.5-flash") return "Gemini 2.5 Flash";
+    if (option === "gemini-2.5-flash-lite") return "Gemini 2.5 Flash Lite";
+
+    return option;
+  };
 
   const slashSuggestions = useMemo(() => {
     if (!value.trimStart().startsWith("/")) {
@@ -157,6 +187,10 @@ export function Composer({
     setValue((previous) => previous.replace(/@([^\s@]*)$/, `@${candidate} `));
   };
 
+  const toggleMode = () => {
+    onSetMode(mode === "plan" ? "edit" : "plan");
+  };
+
   return (
     <form
       className={`composer ${dragging ? "dragging" : ""}`}
@@ -179,35 +213,15 @@ export function Composer({
       }}
       onDrop={handleDrop}
     >
-      <div className="composer-toolbar">
-        <div className="mode-toggle" role="group" aria-label="Chat mode">
-          <button
-            type="button"
-            className={`mode-btn ${mode === "plan" ? "active" : ""}`}
-            onClick={() => onSetMode("plan")}
-          >
-            Plan
-          </button>
-          <button
-            type="button"
-            className={`mode-btn ${mode === "edit" ? "active" : ""}`}
-            onClick={() => onSetMode("edit")}
-          >
-            Edit
-          </button>
+      {attachments.length > 0 && (
+        <div className="composer-attachments">
+          {attachments.map((attachment) => (
+            <span key={attachment.id} className="composer-attachment-chip">
+              {attachment.name}
+            </span>
+          ))}
         </div>
-
-        <label className="model-select-wrap" aria-label="Model">
-          <span>Model</span>
-          <select value={modelId} onChange={(event) => onSetModel(event.target.value)}>
-            {resolvedModelOptions.map((item) => (
-              <option key={item} value={item}>
-                {item}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
+      )}
 
       <textarea
         value={value}
@@ -249,21 +263,48 @@ export function Composer({
       )}
 
       <div className="composer-actions">
-        <button type="button" className="ghost-btn" onClick={onAttach} title="Attach file">
-          <Paperclip size={18} />
-        </button>
-
-        {!running && (
-          <button type="submit" className="primary-btn" title="Send message">
-            <SendHorizonal size={18} />
+        <div className="action-left-group">
+          <button
+            type="button"
+            className={`mode-toggle-btn ${mode}`}
+            onClick={toggleMode}
+            title={`Switch to ${mode === "plan" ? "Edit" : "Plan"} mode`}
+          >
+            {mode === "plan" ? "Plan" : "Edit"}
           </button>
-        )}
 
-        {running && (
-          <button type="button" className="danger-btn" onClick={onStop} title="Stop generation">
-            <Square size={18} />
+          <button type="button" className="ghost-btn" onClick={onAttach} title="Attach file">
+            <Paperclip size={18} />
           </button>
-        )}
+
+          <div className="model-selector-mini">
+            <select
+              value={modelId}
+              onChange={(event) => onSetModel(event.target.value)}
+              title={`Current model: ${modelLabel}`}
+            >
+              {sortedOptions.map((item) => (
+                <option key={item} value={item}>
+                  {modelOptionLabel(item)}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="action-right-group">
+          {!running && (
+            <button type="submit" className="primary-btn" title="Send message">
+              <SendHorizonal size={18} />
+            </button>
+          )}
+
+          {running && (
+            <button type="button" className="danger-btn" onClick={onStop} title="Stop generation">
+              <Square size={18} />
+            </button>
+          )}
+        </div>
       </div>
     </form>
   );

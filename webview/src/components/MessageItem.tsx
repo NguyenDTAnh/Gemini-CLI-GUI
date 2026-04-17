@@ -1,4 +1,4 @@
-import { Sparkle, User, Cpu } from "lucide-react";
+import { Sparkle, User, Cpu, Loader2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkEmoji from "remark-emoji";
@@ -17,32 +17,35 @@ interface MessageItemProps {
 
 export function MessageItem({ message, onRetry }: MessageItemProps) {
   const isAssistant = message.role === "assistant";
-const parts = useMemo(() => {
-  const content = message.content || "";
-  const segments: { type: "text" | "diff" | "subagent" | "loading"; content: string }[] = [];
 
-  if (content) {
-    const regex = /(?=diff --git|--- [ai]\/|\[Subagent:|<subagent )/g;
-    const splitSegments = content.split(regex);
+  const parts = useMemo(() => {
+    const content = message.content || "";
+    const segments: { type: "text" | "diff" | "progress" | "loading"; content: string }[] = [];
 
-    splitSegments.filter(s => s.trim()).forEach(s => {
-      if (s.startsWith("diff --git") || s.startsWith("---")) {
-        segments.push({ type: "diff", content: s.trim() });
-      } else if (s.startsWith("[Subagent:") || s.startsWith("<subagent")) {
-        segments.push({ type: "subagent", content: s.trim() });
-      } else {
-        segments.push({ type: "text", content: s.trim() });
-      }
-    });
-  }
+    if (content) {
+      // Nhận diện diff, subagent, thought, tool calls
+      const regex = /(?=diff --git|--- [ai]\/|\[Subagent:|<subagent |> thought|> call:|\[Tool:)/g;
+      const splitSegments = content.split(regex);
 
-  // Luôn thêm loading part ở cuối nếu đang streaming
-  if (message.status === "streaming") {
-    segments.push({ type: "loading", content: "" });
-  }
+      splitSegments.filter(s => s.trim()).forEach(s => {
+        if (s.startsWith("diff --git") || s.startsWith("---")) {
+          segments.push({ type: "diff", content: s.trim() });
+        } else if (s.startsWith("[Subagent:") || s.startsWith("<subagent") || s.startsWith("> thought") || s.startsWith("> call:") || s.startsWith("[Tool:")) {
+          segments.push({ type: "progress", content: s.trim() });
+        } else {
+          segments.push({ type: "text", content: s.trim() });
+        }
+      });
+    }
 
-  return segments;
-}, [message.content, message.status]);
+    // Luôn thêm loading part ở cuối nếu đang streaming
+    if (message.status === "streaming") {
+      segments.push({ type: "loading", content: "" });
+    }
+
+    return segments;
+  }, [message.content, message.status]);
+
   const diffParts = useMemo(() => parts.filter(p => p.type === "diff").map(p => p.content), [parts]);
 
   return (
@@ -72,12 +75,16 @@ const parts = useMemo(() => {
                 </div>
               ) : part.type === "diff" ? (
                 <DiffViewer diffText={part.content} />
-              ) : part.type === "subagent" ? (
-                <div className="subagent-status">
-                  <span className="subagent-icon">
-                    <Cpu size={14} />
+              ) : part.type === "progress" ? (
+                <div className="progress-status">
+                  <span className="progress-icon">
+                    {part.content.startsWith("> thought") ? <Cpu size={14} /> : <Loader2 size={14} className="spin-icon" />}
                   </span>
-                  <span>{part.content.replace(/[\[\]]/g, '')}</span>
+                  <span className="progress-text">
+                    {part.content.startsWith("> thought") ? "Thinking..." 
+                      : part.content.startsWith("> call:") ? "Executing tool..."
+                      : part.content.split('\n')[0].replace(/[\[\]>]/g, '').trim()}
+                  </span>
                 </div>
               ) : (
                 <ReactMarkdown 

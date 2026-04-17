@@ -27,7 +27,7 @@ export default function App() {
   const [activeSessionId, setActiveSessionId] = useState<string>("");
   const [running, setRunning] = useState(false);
   const [banner, setBanner] = useState<{ kind: "info" | "error"; text: string } | null>(null);
-  const [availableModels, setAvailableModels] = useState<string[]>(["gemini"]);
+  const [availableModels, setAvailableModels] = useState<string[]>(["auto", "manual"]);
   const [slashCommands, setSlashCommands] = useState<string[]>(DEFAULT_SLASH_COMMANDS);
   const [composerPrefill, setComposerPrefill] = useState<{
     nonce: number;
@@ -48,7 +48,7 @@ export default function App() {
         case "bootstrapped": {
           setSessions(message.payload.sessions);
           setActiveSessionId(message.payload.activeSessionId);
-          setAvailableModels(message.payload.availableModels?.length ? message.payload.availableModels : ["gemini"]);
+          setAvailableModels(message.payload.availableModels?.length ? message.payload.availableModels : ["auto", "manual"]);
           setSlashCommands(message.payload.supportedCommands?.length ? message.payload.supportedCommands : DEFAULT_SLASH_COMMANDS);
           return;
         }
@@ -98,7 +98,7 @@ export default function App() {
               session.id === message.sessionId
                 ? {
                     ...session,
-                    defaultModelId: message.modelId,
+                    defaultModelId: message.modelId || undefined,
                     updatedAt: Date.now()
                   }
                 : session
@@ -227,10 +227,12 @@ export default function App() {
           sessionId={activeSession?.id}
           running={running}
           mode={(activeSession?.activeMode || "plan") as ChatMode}
-          modelId={activeSession?.defaultModelId || availableModels[0] || "gemini"}
+          modelId={activeSession?.defaultModelId ? "manual" : "auto"}
+          modelLabel={activeSession?.defaultModelId ? `Manual: ${activeSession.defaultModelId}` : "Auto: Gemini CLI default"}
           modelOptions={availableModels}
           slashCommands={slashCommands}
           mentionCandidates={(activeSession?.attachments || []).map((attachment) => attachment.name)}
+          attachments={activeSession?.attachments || []}
           onSubmit={sendPrompt}
           onStop={() => postMessage({ type: "stopGeneration" })}
           onAttach={() => postMessage({ type: "attachFile" })}
