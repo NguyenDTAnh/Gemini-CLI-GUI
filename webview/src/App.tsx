@@ -6,6 +6,16 @@ import { ChatMode, ChatSession, ExtensionToWebviewMessage, WebviewToExtensionMes
 import { vscode } from "./vscode";
 
 const DEFAULT_SLASH_COMMANDS = ["/explain", "/fix", "/summarize", "/tests"];
+const DEFAULT_MODEL_OPTIONS = [
+  "auto",
+  "gemini-3.1-pro-preview",
+  "gemini-3-flash-preview",
+  "gemini-3.1-flash-lite-preview",
+  "gemini-2.5-pro",
+  "gemini-2.5-flash",
+  "gemini-2.5-flash-lite",
+  "manual"
+];
 
 function upsertSession(sessions: ChatSession[], nextSession: ChatSession): ChatSession[] {
   const existingIndex = sessions.findIndex((item) => item.id === nextSession.id);
@@ -27,7 +37,7 @@ export default function App() {
   const [activeSessionId, setActiveSessionId] = useState<string>("");
   const [running, setRunning] = useState(false);
   const [banner, setBanner] = useState<{ kind: "info" | "error"; text: string } | null>(null);
-  const [availableModels, setAvailableModels] = useState<string[]>(["auto", "manual"]);
+  const [availableModels, setAvailableModels] = useState<string[]>(DEFAULT_MODEL_OPTIONS);
   const [slashCommands, setSlashCommands] = useState<string[]>(DEFAULT_SLASH_COMMANDS);
   const [composerPrefill, setComposerPrefill] = useState<{
     nonce: number;
@@ -48,7 +58,7 @@ export default function App() {
         case "bootstrapped": {
           setSessions(message.payload.sessions);
           setActiveSessionId(message.payload.activeSessionId);
-          setAvailableModels(message.payload.availableModels?.length ? message.payload.availableModels : ["auto", "manual"]);
+          setAvailableModels(message.payload.availableModels?.length ? message.payload.availableModels : DEFAULT_MODEL_OPTIONS);
           setSlashCommands(message.payload.supportedCommands?.length ? message.payload.supportedCommands : DEFAULT_SLASH_COMMANDS);
           return;
         }
@@ -227,8 +237,8 @@ export default function App() {
           sessionId={activeSession?.id}
           running={running}
           mode={(activeSession?.activeMode || "plan") as ChatMode}
-          modelId={activeSession?.defaultModelId ? "manual" : "auto"}
-          modelLabel={activeSession?.defaultModelId ? `Manual: ${activeSession.defaultModelId}` : "Auto: Gemini CLI default"}
+          modelId={activeSession?.defaultModelId || "auto"}
+          modelLabel={activeSession?.defaultModelId || "Auto: Gemini CLI default"}
           modelOptions={availableModels}
           slashCommands={slashCommands}
           mentionCandidates={(activeSession?.attachments || []).map((attachment) => attachment.name)}

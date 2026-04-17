@@ -17,15 +17,29 @@ export function ModelSelector({ modelId, modelOptions, onSelect }: ModelSelector
         setIsOpen(false);
       }
     };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
   }, []);
 
   const getModelLabel = (id: string) => {
     if (id === "auto") return "Auto (Default)";
+    if (id === "gemini-3.1-pro-preview") return "Gemini 3.1 Pro";
+    if (id === "gemini-3-flash-preview") return "Gemini 3 Flash";
+    if (id === "gemini-3.1-flash-lite-preview") return "Gemini 3.1 Flash Lite";
+    if (id === "gemini-2.5-pro") return "Gemini 2.5 Pro";
+    if (id === "gemini-2.5-flash") return "Gemini 2.5 Flash";
+    if (id === "gemini-2.5-flash-lite") return "Gemini 2.5 Flash Lite";
     if (id === "manual") return "Manual Model ID...";
-    // Clean up IDs for display (e.g. gemini-2.0-flash -> Gemini 2.0 Flash)
-    return id.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+    
+    return id;
+  };
+
+  const currentLabel = modelId === "manual" ? "Select Model ID" : getModelLabel(modelId);
+
+  const toggleDropdown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsOpen(!isOpen);
   };
 
   return (
@@ -33,11 +47,10 @@ export function ModelSelector({ modelId, modelOptions, onSelect }: ModelSelector
       <button 
         type="button"
         className={`model-selector-trigger ${isOpen ? 'active' : ''}`}
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={toggleDropdown}
         title={`Current model: ${getModelLabel(modelId)}`}
       >
-        <Sparkles size={14} className="model-icon" />
-        <span className="current-model-name">{getModelLabel(modelId)}</span>
+        <span className="current-model-name">{currentLabel}</span>
         <ChevronDown size={14} className={`chevron ${isOpen ? 'open' : ''}`} />
       </button>
 
@@ -55,7 +68,9 @@ export function ModelSelector({ modelId, modelOptions, onSelect }: ModelSelector
                 }}
               >
                 <div className="model-item-info">
-                  <span className="model-item-name">{getModelLabel(option)}</span>
+                  <span className="model-item-name">
+                    {option === "manual" ? "Enter Model ID manually..." : getModelLabel(option)}
+                  </span>
                   {option === "auto" && <span className="model-tag">Recommended</span>}
                 </div>
               </button>

@@ -556,7 +556,23 @@ export class GeminiChatController {
   }
 
   private getAvailableModels(): string[] {
-    return ["auto", "manual"];
+    const config = vscode.workspace.getConfiguration("geminiCliChat");
+    const configuredModels = (config.get<string[]>("availableModels", []) || [])
+      .map((item) => item.trim())
+      .filter((item) => Boolean(item));
+
+    const fallbackModels = [
+      "gemini-3.1-pro-preview",
+      "gemini-3-flash-preview",
+      "gemini-3.1-flash-lite-preview",
+      "gemini-2.5-pro",
+      "gemini-2.5-flash",
+      "gemini-2.5-flash-lite"
+    ];
+
+    const source = configuredModels.length > 0 ? configuredModels : fallbackModels;
+    const normalized = source.filter((item) => item !== "auto" && item !== "manual");
+    return [...new Set(["auto", ...normalized, "manual"] )];
   }
 
   private buildMentionContext(prompt: string, attachments: Attachment[]): string {

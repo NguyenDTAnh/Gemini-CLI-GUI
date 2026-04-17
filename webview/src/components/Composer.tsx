@@ -51,6 +51,17 @@ async function toDroppedPayload(file: File): Promise<DroppedFilePayload> {
   };
 }
 
+const StopIcon = ({ size = 16 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="8" y="8" width="8" height="8" rx="1.5" fill="currentColor">
+      <animate attributeName="opacity" values="1;0.4;1" dur="2s" repeatCount="indefinite" />
+    </rect>
+    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" strokeDasharray="20 40" strokeLinecap="round" opacity="0.8">
+      <animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="1.5s" repeatCount="indefinite" />
+    </circle>
+  </svg>
+);
+
 export function Composer({
   sessionId,
   running,
@@ -268,13 +279,13 @@ export function Composer({
         <div className="action-right-group">
           {!running && (
             <button type="submit" className="primary-btn" title="Send message">
-              <SendHorizonal size={14} />
+              <SendHorizonal size={16} />
             </button>
           )}
 
           {running && (
             <button type="button" className="danger-btn" onClick={onStop} title="Stop generation">
-              <Square size={14} />
+              <StopIcon size={16} />
             </button>
           )}
         </div>
