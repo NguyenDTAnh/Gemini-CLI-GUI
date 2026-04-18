@@ -183,8 +183,8 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
               radial-gradient(circle at 50% 0%, rgba(18, 25, 45, 0.8), var(--bg-0) 70%), 
               var(--bg-0);
   min-height: 0; 
-  height: 100%; /* Dùng 100% thay vì 0 để absolute children nhận diện đúng */
   overflow: hidden;
+  position: relative;
 }
 
 /* Lớp lưới ASCII tĩnh - cực nhẹ */
@@ -439,7 +439,6 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   resize: none;
   min-height: 24px;
   max-height: 480px;
-  field-sizing: content;
   border: none;
   background: transparent;
   color: var(--ink);

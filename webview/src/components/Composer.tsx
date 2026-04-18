@@ -523,6 +523,7 @@ export function Composer({
               overflow: 'auto',
               height: 'auto',
               maxHeight: '480px',
+              outline: 'none',
             },
             suggestions: {
               position: 'absolute',

@@ -9,10 +9,20 @@ interface ChatTimelineProps {
 }
 
 export function ChatTimeline({ messages, onRetry }: ChatTimelineProps) {
-  const bottomRef = React.useRef<HTMLDivElement>(null);
+  const containerRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (containerRef.current) {
+      const container = containerRef.current;
+      // Dùng requestAnimationFrame hoặc setTimeout để đợi layout ổn định
+      const scrollTimer = setTimeout(() => {
+        container.scrollTo({
+          top: container.scrollHeight,
+          behavior: messages.length <= 1 ? "auto" : "smooth"
+        });
+      }, 100);
+      return () => clearTimeout(scrollTimer);
+    }
   }, [messages]);
 
   if (messages.length === 0) {
@@ -22,17 +32,15 @@ export function ChatTimeline({ messages, onRetry }: ChatTimelineProps) {
           <Sparkles className="session-icon" size={20} />
           <h3>Gemini CLI Chat</h3>
         </div>
-        {/* <p>Start with a prompt or a slash command like /explain, /fix, /summarize.</p> */}
       </div>
     );
   }
 
   return (
-    <div className="timeline">
+    <div className="timeline" ref={containerRef}>
       {messages.map((message) => (
         <MessageItem key={message.id} message={message} onRetry={message.role === "assistant" ? onRetry : undefined} />
       ))}
-      <div ref={bottomRef} style={{ height: 1, width: "100%" }} />
     </div>
   );
 }
