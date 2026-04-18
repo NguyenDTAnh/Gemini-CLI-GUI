@@ -271,6 +271,61 @@ export function Composer({
   const [value, setValue] = React.useState("");
   const [dragging, setDragging] = React.useState(false);
   const mentionsInputRef = React.useRef<HTMLTextAreaElement>(null);
+  const composerWrapperRef = React.useRef<HTMLDivElement>(null);
+
+  // Logic để tự động scroll khi navigate bằng phím Up/Down
+  React.useEffect(() => {
+    const wrapper = composerWrapperRef.current;
+    if (!wrapper) return;
+
+    const observer = new MutationObserver((mutations) => {
+      const scrollFocusedItem = (el: HTMLElement) => {
+        const container = el.closest(".mentions-input__suggestions") as HTMLElement;
+        if (!container) return;
+
+        const isFirst = !el.previousElementSibling;
+        const isLast = !el.nextElementSibling;
+
+        if (isFirst) {
+          container.scrollTop = 0;
+        } else if (isLast) {
+          container.scrollTop = container.scrollHeight;
+        } else {
+          const itemTop = el.offsetTop;
+          const itemBottom = itemTop + el.offsetHeight;
+          const containerTop = container.scrollTop;
+          const containerBottom = containerTop + container.offsetHeight;
+
+          if (itemTop < containerTop) {
+            container.scrollTop = itemTop;
+          } else if (itemBottom > containerBottom) {
+            container.scrollTop = itemBottom - container.offsetHeight;
+          }
+        }
+      };
+
+      for (const mutation of mutations) {
+        if (mutation.type === "childList") {
+          const focusedItem = wrapper.querySelector(".mentions-input__suggestions__item--focused") as HTMLElement;
+          if (focusedItem) {
+            scrollFocusedItem(focusedItem);
+          }
+        }
+        if (mutation.type === "attributes" && (mutation.target as HTMLElement).classList.contains("mentions-input__suggestions__item--focused")) {
+          scrollFocusedItem(mutation.target as HTMLElement);
+        }
+      }
+    });
+
+    observer.observe(wrapper, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["class"]
+    });
+
+    return () => observer.disconnect();
+  }, []);
 
   React.useEffect(() => {
     if (!prefill || !prefill.text.trim()) {
@@ -455,7 +510,7 @@ export function Composer({
         </div>
       )}
 
-      <div className="composer-input-wrapper" onKeyDown={handleKeyDown}>
+      <div className="composer-input-wrapper" ref={composerWrapperRef} onKeyDown={handleKeyDown}>
         <MentionsInput
           inputRef={mentionsInputRef}
           value={value}
@@ -467,13 +522,14 @@ export function Composer({
             input: {
               overflow: 'auto',
               height: 'auto',
+              maxHeight: '480px',
             },
             suggestions: {
-              // Cố định popup ở phía trên input
               position: 'absolute',
               bottom: '100%',
               top: 'auto',
               marginBottom: '8px',
+              zIndex: 1000,
             }
           }}
         >
@@ -494,6 +550,10 @@ export function Composer({
             }}
             markup="@[__display__](__id__)"
             renderSuggestion={renderFileSuggestion as any}
+            onAdd={(id, display) => {
+              // id is fsPath, display is name
+              onAttachFiles([{ name: display as string, fsPath: id as string }]);
+            }}
             appendSpaceOnAdd
           />
         </MentionsInput>

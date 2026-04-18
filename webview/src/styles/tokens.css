@@ -39,7 +39,7 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
 }
 
 .app-shell { 
-  height: 100%; 
+  height: 100%; /* Dùng 100% để bám sát thẻ cha thay vì 100vh có thể bị lỗi ở một số môi trường */
   display: flex; 
   flex-direction: column; 
   width: 100%; 
@@ -48,6 +48,7 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
 
 /* Session Selector Styles */
 .session-selector {
+  flex-shrink: 0;
   position: sticky;
   top: 0;
   z-index: 100;
@@ -182,13 +183,19 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
               radial-gradient(circle at 50% 0%, rgba(18, 25, 45, 0.8), var(--bg-0) 70%), 
               var(--bg-0);
   min-height: 0; 
+  height: 100%; /* Dùng 100% thay vì 0 để absolute children nhận diện đúng */
   overflow: hidden;
 }
 
 /* Lớp lưới ASCII tĩnh - cực nhẹ */
 .chat-panel-bg {
-  position: absolute; /* Đổi về absolute so với chat-panel */
-  inset: 0;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
   z-index: 0;
   pointer-events: none;
   background-image: url("data:image/svg+xml,%3Csvg width='24' height='24' xmlns='http://www.w3.org/2000/svg'%3E%3Ctext x='12' y='12' font-family='monospace' font-size='12' fill='%23a8c7fa' text-anchor='middle' dominant-baseline='central' opacity='0.25'%3E+%3C/text%3E%3C/svg%3E");
@@ -264,8 +271,9 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
 
 .timeline {
   flex: 1;
+  min-height: 0; /* Cho phép timeline co lại khi scroll */
   overflow: auto;
-  padding: 12px 12px 140px; /* Padding bottom to prevent overlap with fixed composer */
+  padding: 12px 12px 24px; /* Trả lại padding tự nhiên, không cần chừa chỗ cho composer nữa */
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -405,10 +413,7 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
 .chip-remove:hover { color: var(--ink); }
 
 .composer {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  flex-shrink: 0;
   z-index: 10;
   padding: 10px 14px 4px; /* Phục hồi padding bottom */
   display: flex;
@@ -696,7 +701,7 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   text-overflow: ellipsis;
 }
 
-.composer-attachments { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 4px; }
+.composer-attachments { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 4px; margin-bottom: 8px; }
 .composer-attachment-chip {
   display: inline-flex;
   align-items: center;
@@ -726,31 +731,39 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
 
 .mentions-input__control {
   font-family: inherit;
-  font-size: 14px;
+  font-size: 13px;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: var(--bg-secondary);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  min-height: 40px;
+  overflow: hidden;
+}
+
+.mentions-input__control--focused {
+  border-color: var(--brand);
+  background: var(--bg-1);
 }
 
 .mentions-input__highlighter {
-  padding: 8px 12px;
+  padding: 10px 12px;
   border: 1px solid transparent;
   min-height: 40px;
   box-sizing: border-box;
 }
 
 .mentions-input__input {
-  padding: 8px 12px;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  background: var(--bg-secondary) !important;
-  color: var(--fg-primary) !important;
+  padding: 10px 12px;
+  border: none !important;
+  border-radius: 12px;
+  background: transparent !important;
+  color: var(--ink) !important;
   min-height: 40px;
   box-sizing: border-box;
   outline: none;
   width: 100% !important;
   display: block;
-}
-
-.mentions-input__input:focus {
-  border-color: var(--brand);
+  resize: none !important;
 }
 
 .mentions-input__highlighter__mention {
