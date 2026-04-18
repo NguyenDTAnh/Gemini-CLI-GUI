@@ -44,7 +44,6 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   flex-direction: column; 
   width: 100%; 
   overflow: hidden; 
-  position: relative; /* Tạo context cho các thành phần fixed/absolute bên trong */
 }
 
 /* Session Selector Styles */
@@ -178,9 +177,12 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   flex: 1; 
   display: flex; 
   flex-direction: column; 
-  background: radial-gradient(circle at 50% 0%, rgba(18, 25, 45, 0.8), var(--bg-0) 70%), var(--bg-0);
+  background: linear-gradient(to top, rgba(66, 133, 244, 0.05), transparent 40%), 
+              linear-gradient(to top, rgba(234, 67, 53, 0.05), transparent 60%), 
+              radial-gradient(circle at 50% 0%, rgba(18, 25, 45, 0.8), var(--bg-0) 70%), 
+              var(--bg-0);
   min-height: 0; 
-  overflow: hidden; /* Quan trọng: Triệt tiêu mọi con cái thò chân ra ngoài gây scroll */
+  overflow: hidden;
 }
 
 /* Lớp lưới ASCII tĩnh - cực nhẹ */
@@ -713,6 +715,90 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
 .banner.error { background: rgba(242, 184, 181, 0.1); color: var(--danger); }
 
 .empty-state { margin: auto; text-align: center; color: var(--muted); max-width: 400px; }
+
+/* React Mentions Styles */
+.mentions-input {
+  width: 100%;
+  position: relative;
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.mentions-input__control {
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.mentions-input__highlighter {
+  padding: 8px 12px;
+  border: 1px solid transparent;
+  min-height: 40px;
+  box-sizing: border-box;
+}
+
+.mentions-input__input {
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-secondary) !important;
+  color: var(--fg-primary) !important;
+  min-height: 40px;
+  box-sizing: border-box;
+  outline: none;
+  width: 100% !important;
+  display: block;
+}
+
+.mentions-input__input:focus {
+  border-color: var(--brand);
+}
+
+.mentions-input__highlighter__mention {
+  background-color: rgba(168, 199, 250, 0.15);
+  color: var(--brand);
+  border-radius: 4px;
+  padding: 1px 0;
+  font-weight: 500;
+  box-shadow: 0 0 0 1px rgba(168, 199, 250, 0.25);
+}
+
+/* Đây là phần quan trọng: Popup gợi ý */
+.mentions-input__suggestions {
+  position: absolute;
+  /* bottom: calc(100% + 8px); // React-mentions tính toán vị trí này tự động nếu dùng style prop, nhưng mình sẽ ép bằng CSS */
+  background: var(--bg-1) !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 12px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 2px !important;
+  padding: 6px !important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6) !important;
+  z-index: 1000 !important;
+  max-height: 240px !important;
+  overflow-y: auto !important;
+  width: max-content !important;
+  min-width: 200px !important;
+  max-width: min(400px, 90vw) !important;
+  animation: popup-in 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mentions-input__suggestions__list {
+  list-style: none;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.mentions-input__suggestions__item {
+  padding: 0 !important;
+  cursor: pointer;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.mentions-input__suggestions__item--focused {
+  background-color: var(--bg-secondary) !important;
+}
 
 /* Diff Viewer Styles */
 .diff-container { margin: 0; border-radius: 8px; overflow: hidden; border: 1px solid var(--line); background: #000; font-family: 'SF Mono', Monaco, Consolas, monospace; }

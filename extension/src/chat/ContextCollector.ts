@@ -99,7 +99,7 @@ export class ContextCollector {
         break;
       }
 
-      let entries: [string, vscode.FileType][] = [];
+      let entries: [string, vscode.FileType][];
       try {
         entries = await vscode.workspace.fs.readDirectory(current);
       } catch {
@@ -208,7 +208,7 @@ export class ContextCollector {
       ].join("\n");
     }
 
-    let decoded = "";
+    let decoded: string;
     try {
       decoded = Buffer.from(attachment.contentBase64, "base64").toString("utf8");
     } catch {

@@ -1,4 +1,5 @@
-import { ChevronDown, Cpu, Sparkles } from "lucide-react";
+import { ChevronDown } from "lucide-react";
+
 import { useState, useRef, useEffect } from "react";
 
 interface ModelSelectorProps {

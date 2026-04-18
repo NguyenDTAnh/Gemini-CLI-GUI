@@ -1,7 +1,8 @@
-import { DragEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { FileCode, FileSearch, FileText, Image as ImageIcon, Paperclip, SendHorizonal, Sparkles, Square, Terminal, X } from "lucide-react";
+import * as React from "react";
+import { FileCode, FileSearch, FileText, Image as ImageIcon, Paperclip, SendHorizonal, Sparkles, Terminal, X } from "lucide-react";
 import { Attachment, ChatMode, DroppedFilePayload, SlashCommandDescriptor } from "../types";
 import { ModelSelector } from "./ModelSelector";
+import { MentionsInput, Mention, SuggestionDataItem } from "react-mentions";
 
 interface WebkitFileSystemEntry {
   isFile: boolean;
@@ -22,8 +23,9 @@ interface WebkitFileSystemDirectoryEntry extends WebkitFileSystemEntry {
   };
 }
 
-interface WebkitDataTransferItem extends DataTransferItem {
-  webkitGetAsEntry?: () => WebkitFileSystemEntry | null;
+interface WebkitDataTransferItem {
+  webkitGetAsEntry?: () => any;
+  getAsFile: () => File | null;
 }
 
 interface ComposerProps {
@@ -251,7 +253,6 @@ export function Composer({
   running,
   mode,
   modelId,
-  modelLabel,
   modelOptions,
   slashCommands,
   commandDescriptors,
@@ -267,199 +268,114 @@ export function Composer({
   onSearchFiles,
   prefill
 }: ComposerProps) {
-  const [value, setValue] = useState("");
-  const [dragging, setDragging] = useState(false);
-  const [suggestionIndex, setSuggestionIndex] = useState(0);
-  const [suggestionLeft, setSuggestionLeft] = useState(0);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const slashListRef = useRef<HTMLDivElement>(null);
-  const mentionListRef = useRef<HTMLDivElement>(null);
+  const [value, setValue] = React.useState("");
+  const [dragging, setDragging] = React.useState(false);
+  const mentionsInputRef = React.useRef<HTMLTextAreaElement>(null);
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (!prefill || !prefill.text.trim()) {
       return;
     }
 
-    setValue((previous) => {
-      if (!prefill.append || !previous.trim()) {
-        return prefill.text;
-      }
+    const timer = setTimeout(() => {
+      setValue((previous) => {
+        if (!prefill.append || !previous.trim()) {
+          return prefill.text;
+        }
 
-      return `${previous.trimEnd()}\n\n${prefill.text}`;
-    });
-  }, [prefill?.nonce]);
+        return `${previous.trimEnd()}\n\n${prefill.text}`;
+      });
+    }, 0);
 
-  const resolvedModelOptions = useMemo(() => {
+    return () => clearTimeout(timer);
+  }, [prefill, setValue]);
+
+  const resolvedModelOptions = React.useMemo(() => {
     const list = [...modelOptions, modelId].filter((item) => Boolean(item.trim()));
     return [...new Set(list)];
   }, [modelOptions, modelId]);
 
-  const sortedOptions = useMemo(() => {
+  const sortedOptions = React.useMemo(() => {
     const core = ["auto", "manual"];
     const others = resolvedModelOptions.filter((o) => !core.includes(o));
     return [...core, ...others];
   }, [resolvedModelOptions]);
 
-  const slashSuggestions = useMemo(() => {
-    if (!value.trimStart().startsWith("/")) {
-      return [];
-    }
+  const slashMentionData = React.useMemo(() => {
+    return slashCommands.map((cmd) => ({ id: cmd, display: cmd }));
+  }, [slashCommands]);
 
-    const token = value.trimStart().toLowerCase();
-    return slashCommands.filter((item) => item.startsWith(token));
-  }, [slashCommands, value]);
+  const fileMentionData = React.useMemo(() => {
+    return mentionCandidates.map((item) => ({
+      id: item.fsPath,
+      display: item.name,
+      fsPath: item.fsPath
+    }));
+  }, [mentionCandidates]);
 
-  const mentionMatch = useMemo(() => {
-    const match = value.match(/(?:^|\s)@([^\s@]*)$/);
-    return match;
-  }, [value]);
-
-  const mentionQuery = useMemo(() => {
-    return mentionMatch ? mentionMatch[1].toLowerCase() : null;
-  }, [mentionMatch]);
-
-  const mentionSuggestions = useMemo(() => {
-    if (mentionQuery === null || mentionQuery.trim().length < 2) {
-      return [];
-    }
-
-    return mentionCandidates
-      .filter((item) => {
-        const nameMatch = item.name.toLowerCase().includes(mentionQuery);
-        const pathMatch = item.fsPath.toLowerCase().includes(mentionQuery);
-        return nameMatch || pathMatch;
-      })
-      .slice(0, 15);
-  }, [mentionCandidates, mentionQuery]);
-
-  useEffect(() => {
-    const activeRef = slashSuggestions.length > 0 ? slashListRef : (mentionSuggestions.length > 0 ? mentionListRef : null);
-    if (activeRef?.current) {
-      const activeItem = activeRef.current.querySelector(".suggestion-item.active") as HTMLElement;
-      if (activeItem) {
-        if (suggestionIndex === 0) {
-          activeRef.current.scrollTop = 0;
-        } else if (suggestionIndex === (slashSuggestions.length > 0 ? slashSuggestions.length : mentionSuggestions.length) - 1) {
-          activeRef.current.scrollTop = activeRef.current.scrollHeight;
-        } else {
-          activeItem.scrollIntoView({ block: "nearest" });
-        }
-      }
-    }
-  }, [suggestionIndex, slashSuggestions.length, mentionSuggestions.length]);
-
-
-  useEffect(() => {
-    if (mentionQuery === null || mentionQuery.trim().length < 2) {
-      onSearchFiles("");
-      return;
-    }
-
-    const debounceId = window.setTimeout(() => {
-      onSearchFiles(mentionQuery.trim().toLowerCase());
-    }, 120);
-
-    return () => window.clearTimeout(debounceId);
-  }, [mentionQuery, onSearchFiles]);
-
-  const useMentionSuggestions = mentionQuery !== null;
-  const suggestionsCount = useMentionSuggestions ? mentionSuggestions.length : slashSuggestions.length;
-
-  useEffect(() => {
-    setSuggestionIndex(0);
-  }, [suggestionsCount]);
-
-  useEffect(() => {
-    if (suggestionsCount === 0 || !textareaRef.current) {
-      return;
-    }
-
-    // Measure trigger position
-    const textarea = textareaRef.current;
-    const text = textarea.value;
-    const triggerIndex =
-      slashSuggestions.length > 0
-        ? text.indexOf("/")
-        : mentionMatch
-        ? mentionMatch.index + (mentionMatch[0].startsWith(" ") ? 1 : 0)
-        : -1;
-
-    if (triggerIndex === -1) return;
-
-    const textBeforeTrigger = text.substring(0, triggerIndex);
-
-    // Simple canvas measurement to calculate width of text before trigger
-    const canvas = document.createElement("canvas");
-    const context = canvas.getContext("2d");
-    if (context) {
-      const style = window.getComputedStyle(textarea);
-      context.font = style.font || `${style.fontSize} ${style.fontFamily}`;
-      const metrics = context.measureText(textBeforeTrigger);
-      const paddingLeft = parseFloat(style.paddingLeft || "0");
-
-      // Calculate max left to prevent overflow from the right side
-      const calculatedLeft = metrics.width + paddingLeft;
-      const maxLeft = textarea.clientWidth - 220; // 220 is min-width of popup
-      setSuggestionLeft(Math.min(calculatedLeft, maxLeft));
-    }
-  }, [suggestionsCount, value, mentionMatch, slashSuggestions.length]);
-
-  const submit = (event: FormEvent) => {
-    event.preventDefault();
+  const submit = (event?: React.FormEvent | React.KeyboardEvent) => {
+    event?.preventDefault();
     const prompt = value.trim();
     if (!prompt) {
       return;
     }
 
-    onSubmit(prompt);
+    // Convert markup like @[filename](filepath) to @filename for the AI
+    const cleanPrompt = value.replace(/@\[([^\]]+)\]\(([^)]+)\)/g, "@$1");
+    onSubmit(cleanPrompt);
     setValue("");
   };
 
-  const applySlash = (item: string) => {
-    setValue(`${item} `);
-    setSuggestionIndex(0);
-  };
-
-  const applyMention = (candidate: { name: string; fsPath: string }) => {
-    setValue((previous) => previous.replace(/@([^\s@]*)$/, `@${candidate.name} `));
-    setSuggestionIndex(0);
-  };
-
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (suggestionsCount > 0) {
-      if (event.key === "ArrowDown") {
-        event.preventDefault();
-        setSuggestionIndex((prev) => (prev + 1) % suggestionsCount);
-        return;
-      }
-      if (event.key === "ArrowUp") {
-        event.preventDefault();
-        setSuggestionIndex((prev) => (prev - 1 + suggestionsCount) % suggestionsCount);
-        return;
-      }
-      if (event.key === "Enter" || event.key === "Tab") {
-        event.preventDefault();
-        if (useMentionSuggestions) {
-          applyMention(mentionSuggestions[suggestionIndex]);
-        } else {
-          applySlash(slashSuggestions[suggestionIndex]);
-        }
-        return;
-      }
-      if (event.key === "Escape") {
-        event.preventDefault();
-        setValue((prev) => prev.replace(/\/|@$/, ""));
-        return;
-      }
-    }
-
+  const handleKeyDown = (event: React.KeyboardEvent) => {
     if (event.key === "Enter" && !event.shiftKey) {
-      event.preventDefault();
-      submit(event as unknown as FormEvent);
+      // If suggestions are open, Enter selects the suggestion (handled by library)
+      // If not open, we submit.
+      const isSuggestionOpen = document.querySelector(".mentions-input__suggestions");
+      if (!isSuggestionOpen) {
+        event.preventDefault();
+        submit(event);
+      }
     }
   };
 
-  const handleDrop = async (event: DragEvent<HTMLFormElement>) => {
+  const renderSlashSuggestion = (
+    suggestion: SuggestionDataItem,
+    _search: string,
+    highlightedDisplay: React.ReactNode,
+    _index: number,
+    focused: boolean
+  ) => {
+    const descriptor = commandDescriptors?.find((d) => `/${d.name}` === suggestion.id);
+    return (
+      <div className={`suggestion-item ${focused ? "active" : ""}`} style={{ padding: "4px 8px" }}>
+        <div className="suggestion-row">
+          <div className="suggestion-icon">{getSlashIcon(descriptor?.category)}</div>
+          <div className="suggestion-name" style={{ color: "var(--fg-primary)" }}>{highlightedDisplay}</div>
+        </div>
+        {descriptor && <div className="suggestion-hint">{descriptor.hint}</div>}
+      </div>
+    );
+  };
+
+  const renderFileSuggestion = (
+    suggestion: SuggestionDataItem & { fsPath?: string },
+    _search: string,
+    highlightedDisplay: React.ReactNode,
+    _index: number,
+    focused: boolean
+  ) => {
+    return (
+      <div className={`suggestion-item ${focused ? "active" : ""}`} style={{ padding: "4px 8px" }}>
+        <div className="suggestion-row">
+          <div className="suggestion-icon">{getFileIcon(suggestion.display || "")}</div>
+          <div className="suggestion-name" style={{ color: "var(--fg-primary)" }}>{highlightedDisplay}</div>
+          <div className="suggestion-path">{suggestion.fsPath}</div>
+        </div>
+      </div>
+    );
+  };
+
+  const handleDrop = async (event: React.DragEvent<HTMLFormElement>) => {
     event.preventDefault();
     setDragging(false);
     if (!sessionId) {
@@ -539,64 +455,49 @@ export function Composer({
         </div>
       )}
 
-      <textarea
-        ref={textareaRef}
-        value={value}
-        onChange={(event) => setValue(event.target.value)}
-        onKeyDown={handleKeyDown}
-        placeholder="Drop files/images, use @filename or /workflow"
-        rows={1}
-        style={{ minHeight: "40px" }}
-      />
-
-      {slashSuggestions.length > 0 && (
-        <div
-          ref={slashListRef}
-          className="slash-suggestions"
-          style={{ "--suggestion-left": `${suggestionLeft}px` } as any}
+      <div className="composer-input-wrapper" onKeyDown={handleKeyDown}>
+        <MentionsInput
+          inputRef={mentionsInputRef}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          placeholder="Drop files/images, use @filename or /workflow"
+          className="mentions-input"
+          a11ySuggestionsListLabel={"Suggested commands and files"}
+          style={{
+            input: {
+              overflow: 'auto',
+              height: 'auto',
+            },
+            suggestions: {
+              // Cố định popup ở phía trên input
+              position: 'absolute',
+              bottom: '100%',
+              top: 'auto',
+              marginBottom: '8px',
+            }
+          }}
         >
-          {slashSuggestions.map((item, index) => {
-            const descriptor = commandDescriptors?.find((d) => `/${d.name}` === item);
-            return (
-              <button
-                key={item}
-                type="button"
-                className={`suggestion-item ${index === suggestionIndex ? "active" : ""}`}
-                onClick={() => applySlash(item)}
-              >
-                <div className="suggestion-row">
-                  <div className="suggestion-icon">{getSlashIcon(descriptor?.category)}</div>
-                  <div className="suggestion-name">{item}</div>
-                </div>
-                {descriptor && <div className="suggestion-hint">{descriptor.hint}</div>}
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      {mentionSuggestions.length > 0 && (
-        <div
-          ref={mentionListRef}
-          className="mention-suggestions"
-          style={{ "--suggestion-left": `${suggestionLeft}px` } as any}
-        >
-          {mentionSuggestions.map((item, index) => (
-            <button
-              key={`${item.fsPath}-${index}`}
-              type="button"
-              className={`suggestion-item ${index === suggestionIndex ? "active" : ""}`}
-              onClick={() => applyMention(item)}
-            >
-              <div className="suggestion-row">
-                <div className="suggestion-icon">{getFileIcon(item.name)}</div>
-                <div className="suggestion-name">{item.name}</div>
-                <div className="suggestion-path">{item.fsPath}</div>
-              </div>
-            </button>
-          ))}
-        </div>
-      )}
+          <Mention
+            trigger="/"
+            data={slashMentionData}
+            markup="/[__display__]"
+            displayTransform={(id) => id}
+            renderSuggestion={renderSlashSuggestion}
+            appendSpaceOnAdd
+          />
+          <Mention
+            trigger="@"
+            data={(query) => {
+              if (query.length < 2) return [];
+              onSearchFiles(query);
+              return fileMentionData;
+            }}
+            markup="@[__display__](__id__)"
+            renderSuggestion={renderFileSuggestion as any}
+            appendSpaceOnAdd
+          />
+        </MentionsInput>
+      </div>
 
 
       <div className="composer-actions">

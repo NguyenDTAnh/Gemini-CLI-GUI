@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { parseDiff } from "react-diff-view";
-import { ChevronDown, ChevronRight, FileCode, Plus, Minus } from "lucide-react";
+import { ChevronDown, ChevronRight, FileCode } from "lucide-react";
 
 interface DiffStatsProps {
   diffTexts: string[];

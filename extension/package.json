@@ -136,17 +136,24 @@
   "scripts": {
     "build": "npm --prefix ../webview run build && npm run build:extension",
     "build:extension": "tsc -p .",
+    "lint": "eslint . --ext .ts",
     "watch": "tsc -p . -w",
     "prepackage": "npm run build",
     "package": "npm run prepackage && npx @vscode/vsce package",
     "test": "npm run build:extension && node --test ../tests/unit/*.test.cjs ../tests/integration/*.test.cjs"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/node": "^20.14.12",
     "@types/vscode": "^1.95.0",
+    "@typescript-eslint/eslint-plugin": "^8.58.2",
+    "@typescript-eslint/parser": "^8.58.2",
     "@vscode/test-electron": "^2.4.1",
     "@vscode/vsce": "^3.3.2",
-    "typescript": "^5.6.3"
+    "eslint": "^10.2.1",
+    "globals": "^17.5.0",
+    "typescript": "^5.6.3",
+    "typescript-eslint": "^8.58.2"
   },
   "dependencies": {
     "fuse.js": "^7.3.0"

@@ -214,7 +214,11 @@ export default function App() {
   }, [activeSessionId, sessions.length]);
 
   useEffect(() => {
-    setMentionSearchResults([]);
+    // Use a timeout to avoid synchronous setState warning and cascading renders
+    const timer = setTimeout(() => {
+      setMentionSearchResults([]);
+    }, 0);
+    return () => clearTimeout(timer);
   }, [activeSession?.id]);
 
   const sendPrompt = (prompt: string) => {

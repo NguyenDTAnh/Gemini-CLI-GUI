@@ -15,7 +15,7 @@ export function DiffViewer({ diffText }: DiffViewerProps) {
           <div className="diff-file-header">
             <span>{file.newPath}</span>
           </div>
-          <Diff viewType="inline" diffType={file.type} hunks={file.hunks}>
+          <Diff viewType={file.type === "add" ? "split" : "unified"} diffType={file.type as any} hunks={file.hunks}>
             {(hunks) => hunks.map((hunk) => <Hunk key={hunk.content} hunk={hunk} />)}
           </Diff>
         </div>

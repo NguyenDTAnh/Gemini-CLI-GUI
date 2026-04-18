@@ -1,4 +1,5 @@
-import { useEffect, useRef } from "react";
+import * as React from "react";
+import { Sparkles } from "lucide-react";
 import { ChatMessage } from "../types";
 import { MessageItem } from "./MessageItem";
 
@@ -8,17 +9,20 @@ interface ChatTimelineProps {
 }
 
 export function ChatTimeline({ messages, onRetry }: ChatTimelineProps) {
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const bottomRef = React.useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
+  React.useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   if (messages.length === 0) {
     return (
       <div className="empty-state">
-        <h3>Gemini CLI Chat</h3>
-        <p>Start with a prompt or a slash command like /explain, /fix, /summarize.</p>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", marginBottom: "8px" }}>
+          <Sparkles className="session-icon" size={20} />
+          <h3>Gemini CLI Chat</h3>
+        </div>
+        {/* <p>Start with a prompt or a slash command like /explain, /fix, /summarize.</p> */}
       </div>
     );
   }

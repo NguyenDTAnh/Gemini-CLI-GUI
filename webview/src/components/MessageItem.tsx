@@ -15,7 +15,7 @@ interface MessageItemProps {
   onRetry?: () => void;
 }
 
-export function MessageItem({ message, onRetry }: MessageItemProps) {
+export function MessageItem({ message }: MessageItemProps) {
   const isAssistant = message.role === "assistant";
 
   const parts = useMemo(() => {
@@ -83,7 +83,7 @@ export function MessageItem({ message, onRetry }: MessageItemProps) {
                   <span className="progress-text">
                     {part.content.startsWith("> thought") ? "Thinking..." 
                       : part.content.startsWith("> call:") ? "Executing tool..."
-                      : part.content.split('\n')[0].replace(/[\[\]>]/g, '').trim()}
+                      : part.content.split('\n')[0].replace(/[[]>]/g, '').trim()}
                   </span>
                 </div>
               ) : (
@@ -91,7 +91,7 @@ export function MessageItem({ message, onRetry }: MessageItemProps) {
                   remarkPlugins={[remarkGfm, remarkEmoji]} 
                   rehypePlugins={[rehypeRaw]}
                   components={{
-                    code({ node, inline, className, children, ...props }: any) {
+                    code({ inline, className, children, ...props }: any) {
                       const match = /language-(\w+)/.exec(className || '');
                       return !inline && match ? (
                         <SyntaxHighlighter
