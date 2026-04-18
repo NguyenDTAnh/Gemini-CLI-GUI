@@ -240,8 +240,34 @@ export default function App() {
     });
   };
 
+  const handleMouseMove = (e: React.MouseEvent<HTMLElement>) => {
+    const el = e.currentTarget;
+    const rect = el.querySelector(".chat-panel")?.getBoundingClientRect();
+    if (!rect) return;
+    
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    el.style.setProperty("--mouse-x", `${x}px`);
+    el.style.setProperty("--mouse-y", `${y}px`);
+    el.style.setProperty("--orb-opacity", "0.65");
+  };
+
+  const handleMouseLeave = (e: React.MouseEvent<HTMLElement>) => {
+    const el = e.currentTarget;
+    const rect = el.querySelector(".chat-panel")?.getBoundingClientRect();
+    if (!rect) return;
+
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    el.style.setProperty("--mouse-x", `${x + (x > rect.width / 2 ? 100 : -100)}px`);
+    el.style.setProperty("--mouse-y", `${y + (y > rect.height / 2 ? 100 : -100)}px`);
+    el.style.setProperty("--orb-opacity", "0");
+  };
+
   return (
-    <div className="app-shell">
+    <div className="app-shell" onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave}>
       <SessionSidebar
         sessions={sessions}
         activeSessionId={activeSession?.id || ""}
@@ -254,6 +280,9 @@ export default function App() {
       />
 
       <section className="chat-panel">
+        <div className="chat-panel-bg" />
+        <div className="gemini-orb" />
+        
         {banner && <div className={`banner ${banner.kind}`}>{banner.text}</div>}
 
         <ChatTimeline messages={activeSession?.messages || []} onRetry={retryLast} />

@@ -38,6 +38,7 @@ export class GeminiChatController {
   private mentionSearchSeq = 0;
   private mentionIndexCache?: MentionIndexCache;
   private activeRequest?: { requestId: string; sessionId: string; assistantMessageId: string };
+  private messageDisposable?: vscode.Disposable;
 
   constructor(
     private readonly context: vscode.ExtensionContext,
@@ -45,9 +46,13 @@ export class GeminiChatController {
   ) {}
 
   bindWebview(webview: vscode.Webview): void {
+    if (this.messageDisposable) {
+      this.messageDisposable.dispose();
+    }
+
     this.webview = webview;
 
-    webview.onDidReceiveMessage((message: WebviewToExtensionMessage) => {
+    this.messageDisposable = webview.onDidReceiveMessage((message: WebviewToExtensionMessage) => {
       void this.handleMessage(message);
     });
 
@@ -87,6 +92,7 @@ export class GeminiChatController {
   }
 
   async stopActiveRequest(): Promise<void> {
+    console.log("GeminiChatController: stopActiveRequest called", this.activeRequest);
     if (!this.activeRequest) {
       return;
     }

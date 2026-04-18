@@ -118,15 +118,19 @@ export class GeminiProcessManager {
   }
 
   stopRequest(requestId: string, signal: NodeJS.Signals = "SIGINT"): boolean {
+    console.log(`GeminiProcessManager: stopRequest called for ${requestId}`);
     const active = this.requests.get(requestId);
     if (!active || active.done) {
+      console.log(`GeminiProcessManager: stopRequest - request ${requestId} not found or already done`);
       return false;
     }
 
     active.cancelled = true;
     try {
+      console.log(`GeminiProcessManager: killing process for ${requestId} with signal ${signal}`);
       active.process.kill(signal);
-    } catch {
+    } catch (e) {
+      console.error(`GeminiProcessManager: error killing process for ${requestId}`, e);
       return false;
     }
 

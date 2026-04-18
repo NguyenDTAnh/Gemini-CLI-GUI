@@ -18,7 +18,7 @@ export function ChatTimeline({ messages, onRetry }: ChatTimelineProps) {
     return (
       <div className="empty-state">
         <h3>Gemini CLI Chat</h3>
-        <p>Bat dau bang mot prompt hoac slash command nhu /explain, /fix, /summarize.</p>
+        <p>Start with a prompt or a slash command like /explain, /fix, /summarize.</p>
       </div>
     );
   }
