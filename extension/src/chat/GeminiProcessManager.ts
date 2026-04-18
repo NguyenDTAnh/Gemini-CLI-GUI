@@ -68,14 +68,30 @@ export class GeminiProcessManager {
     process.stdout.setEncoding("utf8");
     process.stderr.setEncoding("utf8");
 
+    const resetTimer = () => {
+      if (active.timer) {
+        clearTimeout(active.timer);
+      }
+      active.timer = setTimeout(() => {
+        const timedOut = this.stopRequest(options.requestId, "SIGTERM");
+        if (timedOut) {
+          this.finalizeError(options.requestId, "Gemini CLI request timed out.");
+        }
+      }, options.timeoutMs);
+    };
+
+    resetTimer();
+
     process.stdout.on("data", (chunk: string) => {
       if (active.done || active.cancelled) {
         return;
       }
+      resetTimer();
       options.onChunk(chunk);
     });
 
     process.stderr.on("data", (chunk: string) => {
+      resetTimer();
       active.stderr += chunk;
     });
 
@@ -102,13 +118,6 @@ export class GeminiProcessManager {
       const reason = stderr || `Gemini CLI exited with code ${code ?? "unknown"}, signal ${signal ?? "none"}.`;
       this.finalizeError(options.requestId, reason);
     });
-
-    active.timer = setTimeout(() => {
-      const timedOut = this.stopRequest(options.requestId, "SIGTERM");
-      if (timedOut) {
-        this.finalizeError(options.requestId, "Gemini CLI request timed out.");
-      }
-    }, options.timeoutMs);
 
     if (!useArgPrompt) {
       process.stdin.write(envelope);
