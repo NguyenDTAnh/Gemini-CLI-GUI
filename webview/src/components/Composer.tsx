@@ -420,11 +420,19 @@ export function Composer({
     focused: boolean
   ) => {
     return (
-      <div className={`suggestion-item ${focused ? "active" : ""}`} style={{ padding: "4px 8px" }}>
-        <div className="suggestion-row">
-          <div className="suggestion-icon">{getFileIcon(suggestion.display || "")}</div>
-          <div className="suggestion-name" style={{ color: "var(--fg-primary)" }}>{highlightedDisplay}</div>
-          <div className="suggestion-path">{suggestion.fsPath}</div>
+      <div className={`suggestion-item ${focused ? "active" : ""}`} style={{ padding: "6px 10px" }}>
+        <div className="suggestion-row" style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%' }}>
+          <div className="suggestion-icon" style={{ flexShrink: 0 }}>{getFileIcon(suggestion.display || "")}</div>
+          <div className="suggestion-name" style={{ color: "var(--brand)", flexShrink: 0, fontWeight: 600 }}>{highlightedDisplay}</div>
+          <div className="suggestion-path" style={{ 
+            fontSize: '10px', 
+            opacity: 0.4, 
+            overflow: 'hidden', 
+            textOverflow: 'ellipsis', 
+            whiteSpace: 'nowrap',
+            flex: 1,
+            textAlign: 'right'
+          }}>{suggestion.fsPath}</div>
         </div>
       </div>
     );
@@ -545,15 +553,17 @@ export function Composer({
           <Mention
             trigger="@"
             data={(query) => {
-              if (query.length < 2) return [];
+              if (query.length < 1) return []; // Cho phép gợi ý ngay từ ký tự đầu tiên
               onSearchFiles(query);
               return fileMentionData;
             }}
             markup="@[__display__](__id__)"
             renderSuggestion={renderFileSuggestion as any}
             onAdd={(id, display) => {
-              // id is fsPath, display is name
+              // Sau khi add vào textarea, add luôn vào attachments strip
               onAttachFiles([{ name: display as string, fsPath: id as string }]);
+              // Reset search results để suggestions tự đóng
+              onSearchFiles("");
             }}
             appendSpaceOnAdd
           />
