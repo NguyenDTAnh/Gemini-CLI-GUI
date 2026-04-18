@@ -2,7 +2,7 @@ import * as React from "react";
 import { FileCode, FileSearch, FileText, Image as ImageIcon, Paperclip, SendHorizonal, Sparkles, Terminal, X } from "lucide-react";
 import { Attachment, ChatMode, DroppedFilePayload, SlashCommandDescriptor } from "../types";
 import { ModelSelector } from "./ModelSelector";
-import { MentionsInput, Mention, SuggestionDataItem } from "react-mentions";
+import { ContentEditableInput, SuggestionItem } from "./ContentEditableInput";
 
 interface WebkitFileSystemEntry {
   isFile: boolean;
@@ -92,7 +92,6 @@ async function readDirectoryEntries(entry: WebkitFileSystemDirectoryEntry): Prom
   const reader = entry.createReader();
   const all: WebkitFileSystemEntry[] = [];
 
-  // Chromium directory readers return entries in chunks.
   while (true) {
     const chunk = await new Promise<WebkitFileSystemEntry[]>((resolve) => {
       reader.readEntries(
@@ -268,82 +267,7 @@ export function Composer({
   onSearchFiles,
   prefill
 }: ComposerProps) {
-  const [value, setValue] = React.useState("");
   const [dragging, setDragging] = React.useState(false);
-  const mentionsInputRef = React.useRef<HTMLTextAreaElement>(null);
-  const composerWrapperRef = React.useRef<HTMLDivElement>(null);
-
-  // Logic để tự động scroll khi navigate bằng phím Up/Down
-  React.useEffect(() => {
-    const wrapper = composerWrapperRef.current;
-    if (!wrapper) return;
-
-    const observer = new MutationObserver((mutations) => {
-      const scrollFocusedItem = (el: HTMLElement) => {
-        const container = el.closest(".mentions-input__suggestions") as HTMLElement;
-        if (!container) return;
-
-        const isFirst = !el.previousElementSibling;
-        const isLast = !el.nextElementSibling;
-
-        if (isFirst) {
-          container.scrollTop = 0;
-        } else if (isLast) {
-          container.scrollTop = container.scrollHeight;
-        } else {
-          const itemTop = el.offsetTop;
-          const itemBottom = itemTop + el.offsetHeight;
-          const containerTop = container.scrollTop;
-          const containerBottom = containerTop + container.offsetHeight;
-
-          if (itemTop < containerTop) {
-            container.scrollTop = itemTop;
-          } else if (itemBottom > containerBottom) {
-            container.scrollTop = itemBottom - container.offsetHeight;
-          }
-        }
-      };
-
-      for (const mutation of mutations) {
-        if (mutation.type === "childList") {
-          const focusedItem = wrapper.querySelector(".mentions-input__suggestions__item--focused") as HTMLElement;
-          if (focusedItem) {
-            scrollFocusedItem(focusedItem);
-          }
-        }
-        if (mutation.type === "attributes" && (mutation.target as HTMLElement).classList.contains("mentions-input__suggestions__item--focused")) {
-          scrollFocusedItem(mutation.target as HTMLElement);
-        }
-      }
-    });
-
-    observer.observe(wrapper, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: ["class"]
-    });
-
-    return () => observer.disconnect();
-  }, []);
-
-  React.useEffect(() => {
-    if (!prefill || !prefill.text.trim()) {
-      return;
-    }
-
-    const timer = setTimeout(() => {
-      setValue((previous) => {
-        if (!prefill.append || !previous.trim()) {
-          return prefill.text;
-        }
-
-        return `${previous.trimEnd()}\n\n${prefill.text}`;
-      });
-    }, 0);
-
-    return () => clearTimeout(timer);
-  }, [prefill, setValue]);
 
   const resolvedModelOptions = React.useMemo(() => {
     const list = [...modelOptions, modelId].filter((item) => Boolean(item.trim()));
@@ -368,44 +292,24 @@ export function Composer({
     }));
   }, [mentionCandidates]);
 
-  const submit = (event?: React.FormEvent | React.KeyboardEvent) => {
-    event?.preventDefault();
-    const prompt = value.trim();
+  const submit = (text: string) => {
+    const prompt = text.trim();
     if (!prompt) {
       return;
     }
-
-    // Convert markup like @[filename](filepath) to @filename for the AI
-    const cleanPrompt = value.replace(/@\[([^\]]+)\]\(([^)]+)\)/g, "@$1");
-    onSubmit(cleanPrompt);
-    setValue("");
-  };
-
-  const handleKeyDown = (event: React.KeyboardEvent) => {
-    if (event.key === "Enter" && !event.shiftKey) {
-      // If suggestions are open, Enter selects the suggestion (handled by library)
-      // If not open, we submit.
-      const isSuggestionOpen = document.querySelector(".mentions-input__suggestions");
-      if (!isSuggestionOpen) {
-        event.preventDefault();
-        submit(event);
-      }
-    }
+    onSubmit(prompt);
   };
 
   const renderSlashSuggestion = (
-    suggestion: SuggestionDataItem,
-    _search: string,
-    highlightedDisplay: React.ReactNode,
-    _index: number,
+    item: SuggestionItem,
     focused: boolean
   ) => {
-    const descriptor = commandDescriptors?.find((d) => `/${d.name}` === suggestion.id);
+    const descriptor = commandDescriptors?.find((d) => `/${d.name}` === item.id);
     return (
       <div className={`suggestion-item ${focused ? "active" : ""}`} style={{ padding: "4px 8px" }}>
         <div className="suggestion-row">
           <div className="suggestion-icon">{getSlashIcon(descriptor?.category)}</div>
-          <div className="suggestion-name" style={{ color: "var(--fg-primary)" }}>{highlightedDisplay}</div>
+          <div className="suggestion-name" style={{ color: "var(--fg-primary)" }}>{item.display}</div>
         </div>
         {descriptor && <div className="suggestion-hint">{descriptor.hint}</div>}
       </div>
@@ -413,17 +317,14 @@ export function Composer({
   };
 
   const renderFileSuggestion = (
-    suggestion: SuggestionDataItem & { fsPath?: string },
-    _search: string,
-    highlightedDisplay: React.ReactNode,
-    _index: number,
+    item: SuggestionItem,
     focused: boolean
   ) => {
     return (
       <div className={`suggestion-item ${focused ? "active" : ""}`} style={{ padding: "6px 10px" }}>
         <div className="suggestion-row" style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%' }}>
-          <div className="suggestion-icon" style={{ flexShrink: 0 }}>{getFileIcon(suggestion.display || "")}</div>
-          <div className="suggestion-name" style={{ color: "var(--brand)", flexShrink: 0, fontWeight: 600 }}>{highlightedDisplay}</div>
+          <div className="suggestion-icon" style={{ flexShrink: 0 }}>{getFileIcon(item.display)}</div>
+          <div className="suggestion-name" style={{ color: "var(--brand)", flexShrink: 0, fontWeight: 600 }}>{item.display}</div>
           <div className="suggestion-path" style={{ 
             fontSize: '10px', 
             opacity: 0.4, 
@@ -432,7 +333,7 @@ export function Composer({
             whiteSpace: 'nowrap',
             flex: 1,
             textAlign: 'right'
-          }}>{suggestion.fsPath}</div>
+          }}>{item.fsPath}</div>
         </div>
       </div>
     );
@@ -456,7 +357,6 @@ export function Composer({
       return;
     }
 
-    // Deduplicate by fsPath or name to prevent double-attaching the same file
     const dedupedPayloads: DroppedFilePayload[] = [];
     const seenPaths = new Set<string>();
 
@@ -471,7 +371,6 @@ export function Composer({
     try {
       onAttachFiles(dedupedPayloads);
     } catch {
-      // Ignore local file read failures and keep manual attach path available.
     }
   };
 
@@ -482,7 +381,6 @@ export function Composer({
   return (
     <form
       className={`composer ${dragging ? "dragging" : ""}`}
-      onSubmit={submit}
       onDragEnter={(event) => {
         event.preventDefault();
         setDragging(true);
@@ -518,56 +416,17 @@ export function Composer({
         </div>
       )}
 
-      <div className="composer-input-wrapper" ref={composerWrapperRef} onKeyDown={handleKeyDown}>
-        <MentionsInput
-          inputRef={mentionsInputRef}
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
+      <div className="composer-input-wrapper">
+        <ContentEditableInput
           placeholder="Drop files/images, use @filename or /workflow"
-          className="mentions-input"
-          a11ySuggestionsListLabel={"Suggested commands and files"}
-          style={{
-            input: {
-              overflow: 'auto',
-              height: 'auto',
-              maxHeight: '480px',
-              outline: 'none',
-            },
-            suggestions: {
-              position: 'absolute',
-              bottom: '100%',
-              top: 'auto',
-              marginBottom: '8px',
-              zIndex: 1000,
-            }
-          }}
-        >
-          <Mention
-            trigger="/"
-            data={slashMentionData}
-            markup="/[__display__]"
-            displayTransform={(id) => id}
-            renderSuggestion={renderSlashSuggestion}
-            appendSpaceOnAdd
-          />
-          <Mention
-            trigger="@"
-            data={(query) => {
-              if (query.length < 1) return []; // Cho phép gợi ý ngay từ ký tự đầu tiên
-              onSearchFiles(query);
-              return fileMentionData;
-            }}
-            markup="@[__display__](__id__)"
-            renderSuggestion={renderFileSuggestion as any}
-            onAdd={(id, display) => {
-              // Sau khi add vào textarea, add luôn vào attachments strip
-              onAttachFiles([{ name: display as string, fsPath: id as string }]);
-              // Reset search results để suggestions tự đóng
-              onSearchFiles("");
-            }}
-            appendSpaceOnAdd
-          />
-        </MentionsInput>
+          slashCommands={slashMentionData}
+          mentionCandidates={fileMentionData}
+          onSearchFiles={onSearchFiles}
+          onSubmit={submit}
+          renderSlashSuggestion={renderSlashSuggestion}
+          renderFileSuggestion={renderFileSuggestion}
+          prefill={prefill?.text}
+        />
       </div>
 
 
@@ -595,7 +454,9 @@ export function Composer({
 
         <div className="action-right-group">
           {!running && (
-            <button type="submit" className="primary-btn" title="Send message">
+            <button type="button" className="primary-btn" title="Send message" onClick={() => {
+               // The content editable input handles Enter to submit directly
+            }}>
               <SendHorizonal size={16} />
             </button>
           )}

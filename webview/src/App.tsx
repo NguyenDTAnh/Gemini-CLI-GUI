@@ -287,7 +287,7 @@ export default function App() {
         <div className="chat-panel-bg" />
         <div className="gemini-orb" />
         
-        {banner && <div className={`banner ${banner.kind}`}>{banner.text}</div>}
+        {banner && banner.kind === "error" && <div className={`banner ${banner.kind}`}>{banner.text}</div>}
 
         <ChatTimeline messages={activeSession?.messages || []} onRetry={retryLast} />
 

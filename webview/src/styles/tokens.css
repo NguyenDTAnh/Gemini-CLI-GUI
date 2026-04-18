@@ -729,12 +729,12 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   text-overflow: ellipsis;
 }
 
-.composer-attachments { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 4px; margin-bottom: 8px; }
+.composer-attachments { display: flex; flex-wrap: wrap; gap: 6px; padding: 0; margin-bottom: 8px; }
 .composer-attachment-chip {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 2px 8px;
+  padding: 2px 0px;
   border-radius: 999px;
   background: rgba(168, 199, 250, 0.12);
   border: 1px solid rgba(168, 199, 250, 0.18);
@@ -749,61 +749,57 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
 
 .empty-state { margin: auto; text-align: center; color: var(--muted); max-width: 400px; }
 
-/* React Mentions Styles */
-.mentions-input {
+/* Custom ContentEditable Styles */
+.content-editable-wrapper {
   width: 100%;
   position: relative;
   font-family: inherit;
   font-size: 14px;
 }
 
-.mentions-input__control {
-  font-family: inherit;
+.content-editable-input {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   font-size: 13px;
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  background: var(--bg-secondary);
+  line-height: 1.6;
+  background: var(--bg-1);
+  color: var(--ink);
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   min-height: 40px;
-  overflow: hidden;
-}
-
-.mentions-input__control--focused {
-  border-color: var(--brand);
-  background: var(--bg-1);
-}
-
-.mentions-input__highlighter {
-  padding: 10px 12px;
-  border: 1px solid transparent;
-  min-height: 40px;
-  box-sizing: border-box;
-}
-
-.mentions-input__input {
-  padding: 10px 12px;
-  border: none !important;
-  border-radius: 12px;
-  background: transparent !important;
-  color: var(--ink) !important;
-  min-height: 40px;
+  max-height: 480px;
+  padding: 10px 0px;
+  overflow-y: auto;
   box-sizing: border-box;
   outline: none;
-  width: 100% !important;
-  display: block;
-  resize: none !important;
+  width: 100%;
+  white-space: pre-wrap;
+  word-wrap: break-word;
 }
 
-.mentions-input__highlighter__mention {
-  background-color: rgba(168, 199, 250, 0.2) !important;
-  color: var(--brand) !important;
-  border-radius: 4px;
-  padding: 0 4px !important;
-  margin: 0 1px;
-  font-weight: 600;
-  box-shadow: 0 0 0 1px rgba(168, 199, 250, 0.3);
-  text-decoration: none;
-  border-bottom: 1px solid var(--brand);
+.content-editable-input:focus {
+  border-color: var(--brand);
+}
+
+.content-editable-input[data-placeholder]:empty:before {
+  content: attr(data-placeholder);
+  color: var(--muted);
+  opacity: 0.5;
+  pointer-events: none;
+  display: block; /* For Firefox */
+}
+
+/* Atomic Inline Chip Styles */
+.mention-chip {
+  background: rgba(168, 199, 250, 0.1);
+  border: 1px solid var(--brand);
+  color: var(--brand);
+  border-radius: 6px;
+  padding: 2px 8px;
+  margin: 0 2px;
+  font-weight: 500;
+  display: inline-block;
+  user-select: all;
+  vertical-align: baseline;
+  cursor: default;
 }
 
 /* Đây là phần quan trọng: Popup gợi ý */
@@ -897,7 +893,7 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
 }
 
 .composer .composer-attachment-chip {
-  background: linear-gradient(90deg, #a8c7fa, #c58af9, #8ab4f8, #a8c7fa) !important;
+  background: linear-gradient(90deg, rgba(168, 199, 250, 0.8), rgba(197, 138, 249, 0.8), rgba(138, 180, 248, 0.8), rgba(168, 199, 250, 0.8)) !important;
   background-size: 200% 200% !important;
   -webkit-background-clip: text !important;
   -webkit-text-fill-color: transparent !important;
@@ -905,6 +901,7 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   border: none !important;
   animation: orb-bg-pan 4s infinite linear !important;
   font-weight: 600;
+  opacity: 0.8;
 }
 
 .composer .composer-attachment-chip .chip-remove {
@@ -918,18 +915,6 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
 }
 
 .composer .primary-btn svg.lucide-send-horizontal {
-  display: none !important;
-}
-
-.composer .primary-btn {
-  position: relative;
-}
-
-.composer .primary-btn::after {
-  content: "";
-  display: inline-block;
-  width: 16px;
-  height: 16px;
   background: linear-gradient(90deg, #a8c7fa, #c58af9, #8ab4f8, #a8c7fa) !important;
   background-size: 200% 200% !important;
   animation: orb-bg-pan 4s infinite linear !important;
@@ -937,8 +922,16 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   -webkit-mask-size: contain;
   -webkit-mask-repeat: no-repeat;
   -webkit-mask-position: center;
-  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.714 3.048a.498.498 0 0 0-.683.w627l2.843 7.627a2 2 0 0 1 0 1.396l-2.842 7.627a.498.498 0 0 0 .682.627l18-8.5a.5.5 0 0 0 0-.904z'/%3E%3Cpath d='M6 12h16'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.714 3.048a.498.498 0 0 0-.683.627l2.843 7.627a2 2 0 0 1 0 1.396l-2.842 7.627a.498.498 0 0 0 .682.627l18-8.5a.5.5 0 0 0 0-.904z'/%3E%3Cpath d='M6 12h16'/%3E%3C/svg%3E");
   mask-size: contain;
   mask-repeat: no-repeat;
   mask-position: center;
+  width: 16px;
+  height: 16px;
+  display: inline-block !important;
 }
+
+.composer .primary-btn {
+  position: relative;
+}
+
