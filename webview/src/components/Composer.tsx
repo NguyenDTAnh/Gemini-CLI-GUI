@@ -309,7 +309,7 @@ export function Composer({
       <div className={`suggestion-item ${focused ? "active" : ""}`} style={{ padding: "4px 8px" }}>
         <div className="suggestion-row">
           <div className="suggestion-icon">{getSlashIcon(descriptor?.category)}</div>
-          <div className="suggestion-name" style={{ color: "var(--fg-primary)" }}>{item.display}</div>
+          <div className="suggestion-name">{item.display}</div>
         </div>
         {descriptor && <div className="suggestion-hint">{descriptor.hint}</div>}
       </div>
@@ -324,7 +324,7 @@ export function Composer({
       <div className={`suggestion-item ${focused ? "active" : ""}`} style={{ padding: "6px 10px" }}>
         <div className="suggestion-row" style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%' }}>
           <div className="suggestion-icon" style={{ flexShrink: 0 }}>{getFileIcon(item.display)}</div>
-          <div className="suggestion-name" style={{ color: "var(--brand)", flexShrink: 0, fontWeight: 600 }}>{item.display}</div>
+          <div className="suggestion-name" style={{ flexShrink: 0, fontWeight: 600 }}>{item.display}</div>
           <div className="suggestion-path" style={{ 
             fontSize: '10px', 
             opacity: 0.4, 

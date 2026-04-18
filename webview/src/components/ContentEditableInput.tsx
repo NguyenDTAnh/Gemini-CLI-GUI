@@ -28,6 +28,7 @@ export function ContentEditableInput({
   prefill
 }: ContentEditableInputProps) {
   const editorRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
   
   const [suggestionState, setSuggestionState] = useState<{
     active: boolean;
@@ -39,6 +40,36 @@ export function ContentEditableInput({
   } | null>(null);
 
   const [focusedIndex, setFocusedIndex] = useState(0);
+
+  useEffect(() => {
+    if (listRef.current && suggestionState?.active) {
+      const activeItem = listRef.current.querySelector('.mentions-input__suggestions__item--focused') as HTMLElement;
+      if (activeItem) {
+        const container = listRef.current.parentElement as HTMLElement;
+        if (!container) return;
+
+        const isFirst = !activeItem.previousElementSibling;
+        const isLast = !activeItem.nextElementSibling;
+
+        if (isFirst) {
+          container.scrollTop = 0;
+        } else if (isLast) {
+          container.scrollTop = container.scrollHeight;
+        } else {
+          const itemTop = activeItem.offsetTop;
+          const itemBottom = itemTop + activeItem.offsetHeight;
+          const containerTop = container.scrollTop;
+          const containerBottom = containerTop + container.offsetHeight;
+
+          if (itemTop < containerTop) {
+            container.scrollTop = itemTop;
+          } else if (itemBottom > containerBottom) {
+            container.scrollTop = itemBottom - container.offsetHeight;
+          }
+        }
+      }
+    }
+  }, [focusedIndex, suggestionState?.active]);
 
   const getRawText = () => {
     if (!editorRef.current) return '';
