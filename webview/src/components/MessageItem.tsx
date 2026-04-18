@@ -50,15 +50,15 @@ export function MessageItem({ message, onRetry }: MessageItemProps) {
 
   return (
     <article className={`message-row ${message.role}`}>
-      <div className="avatar-box">
-        {isAssistant ? (
-          <Sparkle size={12} fill="currentColor" />
-        ) : (
-          <User size={12} fill="currentColor" />
-        )}
-      </div>
       <div className="message-content">
         <header className="message-head">
+          <div className="avatar-box">
+            {isAssistant ? (
+              <Sparkle size={12} fill="currentColor" />
+            ) : (
+              <User size={12} fill="currentColor" />
+            )}
+          </div>
           <span className="message-role">
             {isAssistant ? <>{message.model || "Gemini"}</> : "You"}
           </span>

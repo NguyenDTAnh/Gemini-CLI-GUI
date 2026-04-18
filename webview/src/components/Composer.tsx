@@ -1,6 +1,6 @@
-import { DragEvent, FormEvent, useEffect, useMemo, useState } from "react";
-import { Paperclip, SendHorizonal, Square } from "lucide-react";
-import { Attachment, ChatMode, DroppedFilePayload } from "../types";
+import { DragEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FileCode, FileSearch, FileText, Image as ImageIcon, Paperclip, SendHorizonal, Sparkles, Square, Terminal, X } from "lucide-react";
+import { Attachment, ChatMode, DroppedFilePayload, SlashCommandDescriptor } from "../types";
 import { ModelSelector } from "./ModelSelector";
 
 interface WebkitFileSystemEntry {
@@ -34,7 +34,8 @@ interface ComposerProps {
   modelLabel: string;
   modelOptions: string[];
   slashCommands: string[];
-  mentionCandidates: string[];
+  commandDescriptors?: SlashCommandDescriptor[];
+  mentionCandidates: { name: string; fsPath: string }[];
   attachments: Attachment[];
   onSubmit: (prompt: string) => void;
   onStop: () => void;
@@ -42,6 +43,8 @@ interface ComposerProps {
   onSetMode: (mode: ChatMode) => void;
   onSetModel: (modelId: string) => void;
   onAttachFiles: (files: DroppedFilePayload[]) => void;
+  onRemoveAttachment: (attachmentId: string) => void;
+  onSearchFiles: (query: string) => void;
   prefill?: {
     nonce: number;
     text: string;
@@ -198,6 +201,51 @@ const StopIcon = ({ size = 16 }: { size?: number }) => (
   </svg>
 );
 
+function getSlashIcon(category?: string) {
+  switch (category) {
+    case "analysis":
+      return <FileSearch size={14} />;
+    case "editing":
+      return <FileCode size={14} />;
+    case "debug":
+      return <Terminal size={14} />;
+    default:
+      return <Sparkles size={14} />;
+  }
+}
+
+function getFileIcon(fileName: string) {
+  const ext = fileName.split(".").pop()?.toLowerCase();
+  switch (ext) {
+    case "ts":
+    case "tsx":
+    case "js":
+    case "jsx":
+    case "vue":
+    case "svelte":
+    case "html":
+    case "css":
+    case "scss":
+    case "less":
+      return <FileCode size={14} />;
+    case "png":
+    case "jpg":
+    case "jpeg":
+    case "gif":
+    case "svg":
+    case "webp":
+      return <ImageIcon size={14} />;
+    case "md":
+    case "txt":
+    case "json":
+    case "yml":
+    case "yaml":
+      return <FileText size={14} />;
+    default:
+      return <FileText size={14} />;
+  }
+}
+
 export function Composer({
   sessionId,
   running,
@@ -206,6 +254,7 @@ export function Composer({
   modelLabel,
   modelOptions,
   slashCommands,
+  commandDescriptors,
   mentionCandidates,
   attachments,
   onSubmit,
@@ -214,10 +263,15 @@ export function Composer({
   onSetMode,
   onSetModel,
   onAttachFiles,
+  onRemoveAttachment,
+  onSearchFiles,
   prefill
 }: ComposerProps) {
   const [value, setValue] = useState("");
   const [dragging, setDragging] = useState(false);
+  const [suggestionIndex, setSuggestionIndex] = useState(0);
+  const [suggestionLeft, setSuggestionLeft] = useState(0);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (!prefill || !prefill.text.trim()) {
@@ -253,20 +307,84 @@ export function Composer({
     return slashCommands.filter((item) => item.startsWith(token));
   }, [slashCommands, value]);
 
-  const mentionQuery = useMemo(() => {
+  const mentionMatch = useMemo(() => {
     const match = value.match(/(?:^|\s)@([^\s@]*)$/);
-    return match ? match[1].toLowerCase() : null;
+    return match;
   }, [value]);
 
+  const mentionQuery = useMemo(() => {
+    return mentionMatch ? mentionMatch[1].toLowerCase() : null;
+  }, [mentionMatch]);
+
   const mentionSuggestions = useMemo(() => {
-    if (mentionQuery === null) {
+    if (mentionQuery === null || mentionQuery.trim().length < 2) {
       return [];
     }
 
-    return [...new Set(mentionCandidates)]
-      .filter((item) => item.toLowerCase().includes(mentionQuery))
-      .slice(0, 8);
+    return mentionCandidates
+      .filter((item) => {
+        const nameMatch = item.name.toLowerCase().includes(mentionQuery);
+        const pathMatch = item.fsPath.toLowerCase().includes(mentionQuery);
+        return nameMatch || pathMatch;
+      })
+      .slice(0, 15);
   }, [mentionCandidates, mentionQuery]);
+
+
+  useEffect(() => {
+    if (mentionQuery === null || mentionQuery.trim().length < 2) {
+      onSearchFiles("");
+      return;
+    }
+
+    const debounceId = window.setTimeout(() => {
+      onSearchFiles(mentionQuery.trim().toLowerCase());
+    }, 120);
+
+    return () => window.clearTimeout(debounceId);
+  }, [mentionQuery, onSearchFiles]);
+
+  const useMentionSuggestions = mentionQuery !== null;
+  const suggestionsCount = useMentionSuggestions ? mentionSuggestions.length : slashSuggestions.length;
+
+  useEffect(() => {
+    setSuggestionIndex(0);
+  }, [suggestionsCount]);
+
+  useEffect(() => {
+    if (suggestionsCount === 0 || !textareaRef.current) {
+      return;
+    }
+
+    // Measure trigger position
+    const textarea = textareaRef.current;
+    const text = textarea.value;
+    const triggerIndex =
+      slashSuggestions.length > 0
+        ? text.indexOf("/")
+        : mentionMatch
+        ? mentionMatch.index + (mentionMatch[0].startsWith(" ") ? 1 : 0)
+        : -1;
+
+    if (triggerIndex === -1) return;
+
+    const textBeforeTrigger = text.substring(0, triggerIndex);
+
+    // Simple canvas measurement to calculate width of text before trigger
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d");
+    if (context) {
+      const style = window.getComputedStyle(textarea);
+      context.font = style.font || `${style.fontSize} ${style.fontFamily}`;
+      const metrics = context.measureText(textBeforeTrigger);
+      const paddingLeft = parseFloat(style.paddingLeft || "0");
+
+      // Calculate max left to prevent overflow from the right side
+      const calculatedLeft = metrics.width + paddingLeft;
+      const maxLeft = textarea.clientWidth - 220; // 220 is min-width of popup
+      setSuggestionLeft(Math.min(calculatedLeft, maxLeft));
+    }
+  }, [suggestionsCount, value, mentionMatch, slashSuggestions.length]);
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -279,7 +397,44 @@ export function Composer({
     setValue("");
   };
 
+  const applySlash = (item: string) => {
+    setValue(`${item} `);
+    setSuggestionIndex(0);
+  };
+
+  const applyMention = (candidate: { name: string; fsPath: string }) => {
+    setValue((previous) => previous.replace(/@([^\s@]*)$/, `@${candidate.name} `));
+    setSuggestionIndex(0);
+  };
+
   const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (suggestionsCount > 0) {
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        setSuggestionIndex((prev) => (prev + 1) % suggestionsCount);
+        return;
+      }
+      if (event.key === "ArrowUp") {
+        event.preventDefault();
+        setSuggestionIndex((prev) => (prev - 1 + suggestionsCount) % suggestionsCount);
+        return;
+      }
+      if (event.key === "Enter" || event.key === "Tab") {
+        event.preventDefault();
+        if (useMentionSuggestions) {
+          applyMention(mentionSuggestions[suggestionIndex]);
+        } else {
+          applySlash(slashSuggestions[suggestionIndex]);
+        }
+        return;
+      }
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setValue((prev) => prev.replace(/\/|@$/, ""));
+        return;
+      }
+    }
+
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
       submit(event as unknown as FormEvent);
@@ -304,24 +459,23 @@ export function Composer({
       return;
     }
 
-    try {
-      onAttachFiles(payloads);
+    // Deduplicate by fsPath or name to prevent double-attaching the same file
+    const dedupedPayloads: DroppedFilePayload[] = [];
+    const seenPaths = new Set<string>();
 
-      const mentions = payloads
-        .map((item) => item.name?.trim())
-        .filter((item): item is string => Boolean(item))
-        .map((name) => `@${name}`)
-        .join(" ");
-      if (mentions) {
-        setValue((previous) => (previous.trim() ? `${previous.trimEnd()}\n${mentions}` : mentions));
+    for (const p of payloads) {
+      const key = p.fsPath || p.uri || p.name;
+      if (!seenPaths.has(key)) {
+        seenPaths.add(key);
+        dedupedPayloads.push(p);
       }
+    }
+
+    try {
+      onAttachFiles(dedupedPayloads);
     } catch {
       // Ignore local file read failures and keep manual attach path available.
     }
-  };
-
-  const applyMention = (candidate: string) => {
-    setValue((previous) => previous.replace(/@([^\s@]*)$/, `@${candidate} `));
   };
 
   const toggleMode = () => {
@@ -355,49 +509,75 @@ export function Composer({
           {attachments.map((attachment) => (
             <span key={attachment.id} className="composer-attachment-chip">
               {attachment.name}
+              <button
+                type="button"
+                className="chip-remove"
+                onClick={() => onRemoveAttachment(attachment.id)}
+              >
+                <X size={12} />
+              </button>
             </span>
           ))}
         </div>
       )}
 
       <textarea
+        ref={textareaRef}
         value={value}
         onChange={(event) => setValue(event.target.value)}
         onKeyDown={handleKeyDown}
         placeholder="Drop files/images, use @filename or /workflow"
         rows={1}
-        style={{ minHeight: "24px" }}
+        style={{ minHeight: "40px" }}
       />
 
       {slashSuggestions.length > 0 && (
-        <div className="slash-suggestions">
-          {slashSuggestions.map((item) => (
-            <button
-              key={item}
-              type="button"
-              className="chip-btn"
-              onClick={() => setValue(`${item} `)}
-            >
-              {item}
-            </button>
-          ))}
+        <div
+          className="slash-suggestions"
+          style={{ "--suggestion-left": `${suggestionLeft}px` } as any}
+        >
+          {slashSuggestions.map((item, index) => {
+            const descriptor = commandDescriptors?.find((d) => `/${d.name}` === item);
+            return (
+              <button
+                key={item}
+                type="button"
+                className={`suggestion-item ${index === suggestionIndex ? "active" : ""}`}
+                onClick={() => applySlash(item)}
+              >
+                <div className="suggestion-row">
+                  <div className="suggestion-icon">{getSlashIcon(descriptor?.category)}</div>
+                  <div className="suggestion-name">{item}</div>
+                </div>
+                {descriptor && <div className="suggestion-hint">{descriptor.hint}</div>}
+              </button>
+            );
+          })}
         </div>
       )}
 
       {mentionSuggestions.length > 0 && (
-        <div className="mention-suggestions">
-          {mentionSuggestions.map((item) => (
+        <div
+          className="mention-suggestions"
+          style={{ "--suggestion-left": `${suggestionLeft}px` } as any}
+        >
+          {mentionSuggestions.map((item, index) => (
             <button
-              key={item}
+              key={`${item.fsPath}-${index}`}
               type="button"
-              className="chip-btn"
+              className={`suggestion-item ${index === suggestionIndex ? "active" : ""}`}
               onClick={() => applyMention(item)}
             >
-              @{item}
+              <div className="suggestion-row">
+                <div className="suggestion-icon">{getFileIcon(item.name)}</div>
+                <div className="suggestion-name">{item.name}</div>
+                <div className="suggestion-path">{item.fsPath}</div>
+              </div>
             </button>
           ))}
         </div>
       )}
+
 
       <div className="composer-actions">
         <div className="action-left-group">
@@ -414,10 +594,10 @@ export function Composer({
             <Paperclip size={14} />
           </button>
 
-          <ModelSelector 
-            modelId={modelId} 
-            modelOptions={sortedOptions} 
-            onSelect={onSetModel} 
+          <ModelSelector
+            modelId={modelId}
+            modelOptions={sortedOptions}
+            onSelect={onSetModel}
           />
         </div>
 

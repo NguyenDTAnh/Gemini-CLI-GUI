@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import * as path from "node:path";
+import Fuse, { FuseResult } from "fuse.js";
 import * as vscode from "vscode";
 import { ContextCollector } from "./ContextCollector";
 import { GeminiProcessManager } from "./GeminiProcessManager";
@@ -15,11 +16,27 @@ import {
   WebviewToExtensionMessage
 } from "../types";
 
+interface MentionFileEntry {
+  uri: vscode.Uri;
+  relative: string;
+  base: string;
+  stem: string;
+}
+
+interface MentionIndexCache {
+  workspaceKey: string;
+  builtAt: number;
+  entries: MentionFileEntry[];
+  fuse: Fuse<MentionFileEntry>;
+}
+
 export class GeminiChatController {
   private webview?: vscode.Webview;
   private readonly processManager = new GeminiProcessManager();
   private readonly slashRouter = new SlashCommandRouter();
   private readonly contextCollector = new ContextCollector();
+  private mentionSearchSeq = 0;
+  private mentionIndexCache?: MentionIndexCache;
   private activeRequest?: { requestId: string; sessionId: string; assistantMessageId: string };
 
   constructor(
@@ -120,6 +137,9 @@ export class GeminiChatController {
       case "switchSession":
         await this.store.setActiveSession(message.sessionId);
         await this.pushBootstrap();
+        return;
+      case "searchFiles":
+        await this.searchFiles(message.query);
         return;
       case "sendPrompt":
         await this.sendPrompt(message.sessionId, message.prompt);
@@ -578,6 +598,129 @@ export class GeminiChatController {
     return [...new Set(["auto", ...normalized, "manual"] )];
   }
 
+  private async searchFiles(query: string): Promise<void> {
+    const normalized = query.trim().toLowerCase();
+    const requestSeq = ++this.mentionSearchSeq;
+    const suggestions = normalized.length < 2
+      ? []
+      : await this.findWorkspaceMentionSuggestions(normalized, 20);
+
+    if (requestSeq !== this.mentionSearchSeq) {
+      return;
+    }
+
+    this.post({
+      type: "fileSearchResults",
+      query: normalized,
+      suggestions
+    });
+  }
+
+  private async findWorkspaceMentionSuggestions(query: string, maxResults: number): Promise<string[]> {
+    if (!query) {
+      return [];
+    }
+
+    const index = await this.getMentionIndex();
+    if (index.entries.length === 0) {
+      return [];
+    }
+
+    const scored = index.fuse
+      .search(query, { limit: maxResults * 5 })
+      .map((result) => ({
+        relative: result.item.relative,
+        score: this.rankFuseResult(query, result)
+      }))
+      .sort((a, b) => b.score - a.score)
+      .map((item) => item.relative);
+
+    return [...new Set(scored)].slice(0, maxResults);
+  }
+
+  private async getMentionIndex(): Promise<MentionIndexCache> {
+    const workspaceKey = this.buildWorkspaceKey();
+    const now = Date.now();
+
+    if (
+      this.mentionIndexCache &&
+      this.mentionIndexCache.workspaceKey === workspaceKey &&
+      now - this.mentionIndexCache.builtAt < 15000
+    ) {
+      return this.mentionIndexCache;
+    }
+
+    const folders = vscode.workspace.workspaceFolders || [];
+    const root = folders[0];
+    if (!root) {
+      const emptyFuse = new Fuse<MentionFileEntry>([], {
+        includeScore: true,
+        shouldSort: true,
+        ignoreLocation: true,
+        threshold: 0.4,
+        minMatchCharLength: 2,
+        keys: [
+          { name: "stem", weight: 0.55 },
+          { name: "base", weight: 0.30 },
+          { name: "relative", weight: 0.15 }
+        ]
+      });
+
+      this.mentionIndexCache = {
+        workspaceKey,
+        builtAt: now,
+        entries: [],
+        fuse: emptyFuse
+      };
+      return this.mentionIndexCache;
+    }
+
+    const include = new vscode.RelativePattern(root, "**/*");
+    const exclude = "**/{.git,node_modules,vendor,dist,build,out,coverage,.next,.turbo,.cache}/**";
+    const uris = await vscode.workspace.findFiles(include, exclude, 12000);
+    const entries: MentionFileEntry[] = uris
+      .filter((uri) => uri.scheme === "file")
+      .map((uri) => {
+        const relative = vscode.workspace.asRelativePath(uri, false).replace(/\\/g, "/");
+        const base = uri.path.split("/").pop() || relative;
+        const stem = base.replace(/\.[^.]+$/, "");
+
+        return {
+          uri,
+          relative,
+          base,
+          stem
+        };
+      });
+
+    const fuse = new Fuse(entries, {
+      includeScore: true,
+      shouldSort: true,
+      ignoreLocation: true,
+      threshold: 0.4,
+      minMatchCharLength: 2,
+      keys: [
+        { name: "stem", weight: 0.55 },
+        { name: "base", weight: 0.30 },
+        { name: "relative", weight: 0.15 }
+      ]
+    });
+
+    this.mentionIndexCache = {
+      workspaceKey,
+      builtAt: now,
+      entries,
+      fuse
+    };
+
+    return this.mentionIndexCache;
+  }
+
+  private buildWorkspaceKey(): string {
+    const root = (vscode.workspace.workspaceFolders || [])[0];
+    return root?.uri.fsPath || "";
+  }
+
   private async resolveMentionAttachments(prompt: string, session: ChatSession, maxAttachedFiles: number): Promise<void> {
     const mentionMatches = [...prompt.matchAll(/(?:^|\s)@([^\s@]+)/g)];
     if (mentionMatches.length === 0) {
@@ -603,23 +746,24 @@ export class GeminiChatController {
       }
 
       const candidates = await this.findWorkspaceFilesForMention(token, 25);
-      const picked = candidates.find((uri) => {
-        const key = uri.fsPath.toLowerCase();
-        return !existing.has(key);
-      });
+      for (const candidate of candidates) {
+        if (additions.length >= available) {
+          break;
+        }
 
-      if (!picked) {
-        continue;
+        const key = candidate.fsPath.toLowerCase();
+        if (existing.has(key)) {
+          continue;
+        }
+
+        existing.add(key);
+        additions.push({
+          id: randomUUID(),
+          name: candidate.path.split("/").pop() || "untitled",
+          fsPath: candidate.fsPath,
+          uri: candidate.toString()
+        });
       }
-
-      const key = picked.fsPath.toLowerCase();
-      existing.add(key);
-      additions.push({
-        id: randomUUID(),
-        name: picked.path.split("/").pop() || "untitled",
-        fsPath: picked.fsPath,
-        uri: picked.toString()
-      });
     }
 
     if (additions.length > 0) {
@@ -638,27 +782,36 @@ export class GeminiChatController {
   }
 
   private async findWorkspaceFilesForMention(token: string, maxResults: number): Promise<vscode.Uri[]> {
-    const sanitized = token.replace(/[\\[\]{}*?]/g, "").trim();
-    if (!sanitized) {
+    const rawToken = token.trim();
+    if (!rawToken) {
       return [];
     }
 
-    const direct = await this.resolveDirectMentionPath(sanitized);
+    const direct = await this.resolveDirectMentionPath(rawToken);
     if (direct) {
       return [direct];
     }
 
-    const include = `**/*${sanitized}*`;
-    const exclude = "**/{.git,node_modules,dist,build,out,coverage,.next,.turbo}/**";
+    const normalized = this.normalizeSearchKey(rawToken);
+    if (!normalized) {
+      return [];
+    }
 
-    const uris = await vscode.workspace.findFiles(include, exclude, maxResults);
-    const scored = uris
-      .filter((uri) => uri.scheme === "file")
-      .map((uri) => ({ uri, score: this.scoreMentionCandidate(sanitized, uri) }))
+    const index = await this.getMentionIndex();
+    const ranked = index.fuse
+      .search(rawToken, { limit: maxResults * 6 })
+      .map((result) => ({ uri: result.item.uri, score: this.rankFuseResult(normalized, result) }))
       .sort((a, b) => b.score - a.score)
-      .map((entry) => entry.uri);
+      .map((item) => item.uri);
 
-    return scored;
+    const unique = new Map<string, vscode.Uri>();
+    for (const uri of ranked) {
+      if (!unique.has(uri.toString())) {
+        unique.set(uri.toString(), uri);
+      }
+    }
+
+    return [...unique.values()].slice(0, maxResults);
   }
 
   private async resolveDirectMentionPath(token: string): Promise<vscode.Uri | undefined> {
@@ -687,32 +840,50 @@ export class GeminiChatController {
     return undefined;
   }
 
-  private scoreMentionCandidate(token: string, uri: vscode.Uri): number {
-    const lowerToken = token.toLowerCase();
-    const relative = vscode.workspace.asRelativePath(uri, false).toLowerCase();
-    const base = uri.path.split("/").pop()?.toLowerCase() || "";
+  private rankFuseResult(query: string, result: FuseResult<MentionFileEntry>): number {
+    const normalizedQuery = this.normalizeSearchKey(query);
+    const relative = result.item.relative.toLowerCase();
+    const base = result.item.base.toLowerCase();
+    const stem = result.item.stem.toLowerCase();
+    const normalizedBase = this.normalizeSearchKey(base);
+    const normalizedStem = this.normalizeSearchKey(stem);
+    const depth = relative.split("/").length;
+    let score = 1000 - Math.round((result.score ?? 1) * 1000);
 
-    if (base === lowerToken) {
-      return 100;
+    if (normalizedStem === normalizedQuery || normalizedBase === normalizedQuery) {
+      score += 500;
+    } else if (normalizedStem.startsWith(normalizedQuery) || normalizedBase.startsWith(normalizedQuery)) {
+      score += 320;
     }
 
-    if (base.startsWith(lowerToken)) {
-      return 80;
+    if (relative.includes(`/${normalizedQuery}`)) {
+      score += 140;
     }
 
-    if (relative.endsWith(`/${lowerToken}`)) {
-      return 75;
+    if (normalizedStem.includes(normalizedQuery)) {
+      score += 120;
     }
 
-    if (base.includes(lowerToken)) {
-      return 60;
+    if (relative.includes("/src/")) {
+      score += 20;
     }
 
-    if (relative.includes(`/${lowerToken}/`) || relative.includes(lowerToken)) {
-      return 40;
+    if (relative.includes("/views/") || relative.includes("/view/")) {
+      score += 24;
     }
 
-    return 10;
+    if (relative.includes("/components/")) {
+      score += 18;
+    }
+
+    score -= depth * 10;
+    return score;
+  }
+
+  private normalizeSearchKey(value: string): string {
+    return value
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "");
   }
 
   private buildMentionContext(prompt: string, attachments: Attachment[]): string {

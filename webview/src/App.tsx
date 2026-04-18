@@ -1,8 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Composer } from "./components/Composer";
 import { ChatTimeline } from "./components/ChatTimeline";
 import { SessionSidebar } from "./components/SessionSidebar";
-import { ChatMode, ChatSession, ExtensionToWebviewMessage, WebviewToExtensionMessage } from "./types";
+import {
+  ChatMode,
+  ChatSession,
+  ExtensionToWebviewMessage,
+  SlashCommandDescriptor,
+  WebviewToExtensionMessage
+} from "./types";
 import { vscode } from "./vscode";
 
 const DEFAULT_SLASH_COMMANDS = ["/explain", "/fix", "/summarize", "/tests"];
@@ -39,6 +45,9 @@ export default function App() {
   const [banner, setBanner] = useState<{ kind: "info" | "error"; text: string } | null>(null);
   const [availableModels, setAvailableModels] = useState<string[]>(DEFAULT_MODEL_OPTIONS);
   const [slashCommands, setSlashCommands] = useState<string[]>(DEFAULT_SLASH_COMMANDS);
+  const [commandDescriptors, setCommandDescriptors] = useState<SlashCommandDescriptor[]>([]);
+  const [mentionSearchResults, setMentionSearchResults] = useState<string[]>([]);
+  const mentionSearchQueryRef = useRef("");
   const [composerPrefill, setComposerPrefill] = useState<{
     nonce: number;
     text: string;
@@ -50,6 +59,27 @@ export default function App() {
     [sessions, activeSessionId]
   );
 
+  const mentionCandidates = useMemo(() => {
+    const attached = (activeSession?.attachments || []).map((attachment) => ({
+      name: attachment.name,
+      fsPath: attachment.fsPath
+    }));
+    const searched = mentionSearchResults.map((path) => ({
+      name: path.split("/").pop() || path,
+      fsPath: path
+    }));
+
+    const all = [...searched, ...attached];
+    const unique = new Map<string, { name: string; fsPath: string }>();
+    for (const item of all) {
+      if (!unique.has(item.fsPath)) {
+        unique.set(item.fsPath, item);
+      }
+    }
+
+    return Array.from(unique.values());
+  }, [activeSession?.attachments, mentionSearchResults]);
+
   useEffect(() => {
     const onMessage = (event: MessageEvent<ExtensionToWebviewMessage>) => {
       const message = event.data;
@@ -60,11 +90,14 @@ export default function App() {
           setActiveSessionId(message.payload.activeSessionId);
           setAvailableModels(message.payload.availableModels?.length ? message.payload.availableModels : DEFAULT_MODEL_OPTIONS);
           setSlashCommands(message.payload.supportedCommands?.length ? message.payload.supportedCommands : DEFAULT_SLASH_COMMANDS);
+          setCommandDescriptors(message.payload.commandDescriptors || []);
+          setMentionSearchResults([]);
           return;
         }
         case "sessionsCleared": {
           setSessions(message.payload.sessions);
           setActiveSessionId(message.payload.activeSessionId);
+          setMentionSearchResults([]);
           setRunning(false);
           return;
         }
@@ -144,6 +177,14 @@ export default function App() {
           }));
           return;
         }
+        case "fileSearchResults": {
+          if (message.query !== mentionSearchQueryRef.current) {
+            return;
+          }
+
+          setMentionSearchResults(message.suggestions || []);
+          return;
+        }
         case "info": {
           setBanner({ kind: "info", text: message.message });
           return;
@@ -171,6 +212,10 @@ export default function App() {
       sessionCount: sessions.length
     });
   }, [activeSessionId, sessions.length]);
+
+  useEffect(() => {
+    setMentionSearchResults([]);
+  }, [activeSession?.id]);
 
   const sendPrompt = (prompt: string) => {
     if (!activeSession?.id) {
@@ -211,26 +256,6 @@ export default function App() {
       <section className="chat-panel">
         {banner && <div className={`banner ${banner.kind}`}>{banner.text}</div>}
 
-        <div className="attachment-strip">
-          {(activeSession?.attachments || []).map((attachment) => (
-            <span key={attachment.id} className="attachment-chip">
-              {attachment.name}
-              <button
-                className="chip-remove"
-                onClick={() =>
-                  postMessage({
-                    type: "removeAttachment",
-                    sessionId: activeSession.id,
-                    attachmentId: attachment.id
-                  })
-                }
-              >
-                x
-              </button>
-            </span>
-          ))}
-        </div>
-
         <ChatTimeline messages={activeSession?.messages || []} onRetry={retryLast} />
 
         <Composer
@@ -241,7 +266,19 @@ export default function App() {
           modelLabel={activeSession?.defaultModelId || "Auto: Gemini CLI default"}
           modelOptions={availableModels}
           slashCommands={slashCommands}
-          mentionCandidates={(activeSession?.attachments || []).map((attachment) => attachment.name)}
+          commandDescriptors={commandDescriptors}
+          mentionCandidates={mentionCandidates}
+          onSearchFiles={(query) => {
+            const normalized = query.trim().toLowerCase();
+            mentionSearchQueryRef.current = normalized;
+
+            if (normalized.length < 2) {
+              setMentionSearchResults([]);
+              return;
+            }
+
+            postMessage({ type: "searchFiles", query: normalized });
+          }}
           attachments={activeSession?.attachments || []}
           onSubmit={sendPrompt}
           onStop={() => postMessage({ type: "stopGeneration" })}
@@ -268,6 +305,14 @@ export default function App() {
               type: "attachFiles",
               sessionId: activeSession.id,
               files
+            })
+          }
+          onRemoveAttachment={(attachmentId) =>
+            activeSession?.id &&
+            postMessage({
+              type: "removeAttachment",
+              sessionId: activeSession.id,
+              attachmentId
             })
           }
           prefill={composerPrefill}

@@ -81,6 +81,7 @@ export type ExtensionToWebviewMessage =
   | { type: "assistantStream"; sessionId: string; requestId: string; chunk: string }
   | { type: "generationState"; running: boolean; requestId?: string }
   | { type: "composerPrefill"; sessionId: string; text: string; append?: boolean }
+  | { type: "fileSearchResults"; query: string; suggestions: string[] }
   | { type: "modelUpdated"; sessionId: string; modelId: string }
   | { type: "modeUpdated"; sessionId: string; mode: ChatMode }
   | { type: "info"; message: string }
@@ -90,6 +91,7 @@ export type WebviewToExtensionMessage =
   | { type: "ready" }
   | { type: "createSession" }
   | { type: "switchSession"; sessionId: string }
+  | { type: "searchFiles"; query: string }
   | { type: "sendPrompt"; sessionId: string; prompt: string }
   | { type: "setModel"; sessionId: string; modelId: string }
   | { type: "toggleMode"; sessionId: string; mode: ChatMode }

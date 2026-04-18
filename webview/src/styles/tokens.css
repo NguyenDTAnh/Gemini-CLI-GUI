@@ -26,6 +26,7 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   color: var(--ink);
   background: var(--bg-0);
+  padding: 0;
 }
 
 h1, h2, h3, h4, h5, h6, h7, h8 {
@@ -178,14 +179,12 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
 
 .message-row { 
   display: flex; 
-  gap: 12px;
+  flex-direction: column;
+  gap: 8px;
   width: 100%; 
   max-width: 800px; 
   position: relative;
-  align-items: flex-start;
 }
-
-.message-row.user { flex-direction: row-reverse; }
 
 .avatar-box {
   width: 24px;
@@ -197,30 +196,26 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   justify-content: center;
   flex-shrink: 0;
   color: var(--brand);
-  margin-top: 4px;
   border: 1px solid rgba(168, 199, 250, 0.1);
 }
 
 .message-row.user .avatar-box { background: var(--brand); color: var(--bg-0); }
 
-.message-content { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; }
+.message-content { display: flex; flex-direction: column; gap: 8px; flex: 1; min-width: 0; }
 .message-row.user .message-content { align-items: flex-end; }
 
-/* Phân cách giữa các lượt hội thoại */
-.message-row:has(.user):not(:first-child) { margin-top: 32px; }
-.message-row:has(.user):not(:first-child)::before {
-  content: "";
-  position: absolute;
-  top: -16px;
-  left: 15%;
-  width: 70%;
-  height: 1px;
-  background: linear-gradient(90deg, rgba(168, 199, 250, 0) 0%, rgba(168, 199, 250, 0.4) 50%, rgba(168, 199, 250, 0) 100%);
-  box-shadow: 0 0 10px rgba(168, 199, 250, 0.1);
+.message-head { 
+  display: flex; 
+  align-items: center; 
+  gap: 8px;
 }
 
-.message-head { display: flex; justify-content: space-between; align-items: center; }
-.message-role { text-transform: none; font-weight: 600; color: var(--muted); font-size: 11px; margin-bottom: 2px; }
+.message-role { 
+  text-transform: none; 
+  font-weight: 700; 
+  color: var(--muted); 
+  font-size: 12px; 
+}
 
 .bubble-stack { display: flex; flex-direction: column; gap: 4px; width: 100%; }
 
@@ -238,7 +233,7 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   transition: all 0.2s ease;
 }
 
-.message-bubble.assistant { background: var(--bg-2); max-width: 100%; width: fit-content; }
+.message-bubble.assistant { background: transparent; padding-left: 0; max-width: 100%; width: fit-content; }
 .message-bubble.assistant.diff, .message-bubble.assistant.loading { width: 100%; padding: 0; background: transparent; border-radius: 8px; }
 .message-bubble.user { background: var(--brand); color: var(--bg-0); border-radius: 12px; max-width: 85%; align-self: flex-end; }
 
@@ -315,6 +310,7 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
 .chip-remove:hover { color: var(--ink); }
 
 .composer {
+  position: relative;
   padding: 10px 14px 4px; /* Minimal padding bottom */
   display: flex;
   flex-direction: column;
@@ -515,10 +511,86 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
 
 .ghost-btn:hover, .primary-btn:hover, .danger-btn:hover { color: var(--ink); transform: scale(1.1); }
 
-.chip-btn { border-radius: 12px; padding: 2px 8px; background: var(--bg-2); }
-.chip-btn:hover { background: rgba(255, 255, 255, 0.12); }
+.slash-suggestions, .mention-suggestions {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: var(--suggestion-left, 0);
+  width: max-content;
+  min-width: 200px;
+  max-width: min(400px, 90vw);
+  background: var(--bg-1);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+  z-index: 1000;
+  max-height: 240px;
+  overflow-y: auto;
+  animation: popup-in 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
 
-.slash-suggestions, .mention-suggestions { display: flex; flex-wrap: wrap; gap: 4px; padding: 0 4px; }
+@keyframes popup-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.suggestion-item {
+  all: unset;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  transition: all 0.15s;
+}
+
+.suggestion-item:hover, .suggestion-item.active {
+  background: rgba(168, 199, 250, 0.1);
+}
+
+.suggestion-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.suggestion-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--brand);
+  opacity: 0.7;
+}
+
+.suggestion-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--brand);
+  white-space: nowrap;
+}
+
+.suggestion-path {
+  font-size: 11px;
+  color: var(--muted);
+  opacity: 0.5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-left: 4px;
+}
+
+.suggestion-hint {
+  font-size: 11px;
+  color: var(--muted);
+  opacity: 0.8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
 .composer-attachments { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 4px; }
 .composer-attachment-chip {
