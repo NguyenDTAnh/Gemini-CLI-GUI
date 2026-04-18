@@ -829,20 +829,52 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   text-overflow: ellipsis;
 }
 
+.composer-attachments { 
+  display: flex; 
+  flex-wrap: wrap; 
+  gap: 6px; 
+  padding: 0; 
+  margin-bottom: 8px; 
+}
+.composer-attachments:empty { display: none !important; }
+
 .composer-attachment-chip {
   display: inline-flex;
   align-items: center;
   gap: 4px;
   padding: 2px 8px;
   border-radius: 999px;
-  background: rgba(168, 199, 250, 0.12);
-  border: 1px solid rgba(168, 199, 250, 0.18);
+  background: var(--gradient-primary) !important;
+  background-size: 200% 200% !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  color: transparent !important;
+  border: none !important;
+  animation: orb-bg-pan 4s infinite linear !important;
+  font-weight: 600;
+  opacity: 0.8;
   font-size: 11px;
   max-width: 100%;
 }
 
 .composer-attachment-chip .chip-remove {
-  background: var(--muted) !important;
+  -webkit-text-fill-color: var(--muted) !important;
+  color: var(--muted) !important;
+  background: transparent !important;
+  all: unset;
+  cursor: pointer;
+  width: 12px;
+  height: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.composer-attachment-chip .chip-remove svg { display: none; }
+
+.composer-attachment-chip .chip-remove::after {
+  content: "";
+  background: var(--muted);
   -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 6 6 18'%3E%3C/path%3E%3Cpath d='m6 6 12 12'%3E%3C/path%3E%3C/svg%3E");
   -webkit-mask-size: contain;
   -webkit-mask-repeat: no-repeat;
@@ -853,11 +885,10 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   mask-position: center;
   width: 12px;
   height: 12px;
+  display: block;
 }
 
-.composer-attachment-chip .chip-remove svg { display: none; }
-
-.composer-attachment-chip .chip-remove:hover { background: var(--ink) !important; }
+.composer-attachment-chip .chip-remove:hover::after { background: var(--ink) !important; }
 
 .ghost-btn[title="Attach file"] svg {
   background: var(--muted) !important;
@@ -1052,30 +1083,6 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   0% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }
   100% { background-position: 0% 50%; }
-}
-
-.composer .composer-attachment-chip {
-  background: var(--gradient-primary) !important;
-  background-size: 200% 200% !important;
-  -webkit-background-clip: text !important;
-  -webkit-text-fill-color: transparent !important;
-  color: transparent !important;
-  border: none !important;
-  animation: orb-bg-pan 4s infinite linear !important;
-  font-weight: 600;
-  opacity: 0.8;
-  padding: 2px 8px; /* Thêm lại padding vì bị mất do border: none */
-}
-
-.composer .composer-attachment-chip .chip-remove {
-  -webkit-text-fill-color: var(--muted) !important;
-  color: var(--muted) !important;
-  background: transparent !important;
-}
-
-.composer .composer-attachment-chip .chip-remove:hover {
-  -webkit-text-fill-color: var(--ink) !important;
-  color: var(--ink) !important;
 }
 
 .composer .primary-btn svg.lucide-send-horizontal {

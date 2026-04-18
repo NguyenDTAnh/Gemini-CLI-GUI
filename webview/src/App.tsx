@@ -272,6 +272,15 @@ export default function App() {
 
   return (
     <div className="app-shell" onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave}>
+      <svg width="0" height="0" style={{ position: 'absolute' }}>
+        <defs>
+          <linearGradient id="gemini-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop stopColor="rgb(66, 133, 244)" offset="0%" />
+            <stop stopColor="rgb(197, 138, 249)" offset="50%" />
+            <stop stopColor="rgb(234, 67, 53)" offset="100%" />
+          </linearGradient>
+        </defs>
+      </svg>
       <SessionSidebar
         sessions={sessions}
         activeSessionId={activeSession?.id || ""}
