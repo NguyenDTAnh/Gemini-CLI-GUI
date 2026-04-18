@@ -272,6 +272,8 @@ export function Composer({
   const [suggestionIndex, setSuggestionIndex] = useState(0);
   const [suggestionLeft, setSuggestionLeft] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const slashListRef = useRef<HTMLDivElement>(null);
+  const mentionListRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!prefill || !prefill.text.trim()) {
@@ -329,6 +331,22 @@ export function Composer({
       })
       .slice(0, 15);
   }, [mentionCandidates, mentionQuery]);
+
+  useEffect(() => {
+    const activeRef = slashSuggestions.length > 0 ? slashListRef : (mentionSuggestions.length > 0 ? mentionListRef : null);
+    if (activeRef?.current) {
+      const activeItem = activeRef.current.querySelector(".suggestion-item.active") as HTMLElement;
+      if (activeItem) {
+        if (suggestionIndex === 0) {
+          activeRef.current.scrollTop = 0;
+        } else if (suggestionIndex === (slashSuggestions.length > 0 ? slashSuggestions.length : mentionSuggestions.length) - 1) {
+          activeRef.current.scrollTop = activeRef.current.scrollHeight;
+        } else {
+          activeItem.scrollIntoView({ block: "nearest" });
+        }
+      }
+    }
+  }, [suggestionIndex, slashSuggestions.length, mentionSuggestions.length]);
 
 
   useEffect(() => {
@@ -533,6 +551,7 @@ export function Composer({
 
       {slashSuggestions.length > 0 && (
         <div
+          ref={slashListRef}
           className="slash-suggestions"
           style={{ "--suggestion-left": `${suggestionLeft}px` } as any}
         >
@@ -558,6 +577,7 @@ export function Composer({
 
       {mentionSuggestions.length > 0 && (
         <div
+          ref={mentionListRef}
           className="mention-suggestions"
           style={{ "--suggestion-left": `${suggestionLeft}px` } as any}
         >

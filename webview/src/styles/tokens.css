@@ -506,7 +506,10 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
 }
 
 .ghost-btn:hover { background: rgba(255, 255, 255, 0.04); }
-.primary-btn { color: var(--brand); }
+.primary-btn { 
+  color: var(--brand);
+  justify-content: flex-end;
+}
 .danger-btn { color: var(--danger); }
 
 .ghost-btn:hover, .primary-btn:hover, .danger-btn:hover { color: var(--ink); transform: scale(1.1); }
