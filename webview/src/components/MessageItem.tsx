@@ -32,7 +32,13 @@ export function MessageItem({ message }: MessageItemProps) {
         if (s.startsWith("diff --git") || s.startsWith("---")) {
           segments.push({ type: "diff", content: s.trim() });
         } else if (s.startsWith("[Subagent:") || s.startsWith("<subagent") || s.startsWith("> thought") || s.startsWith("> call:") || s.startsWith("[Tool:")) {
-          segments.push({ type: "progress", content: s.trim() });
+          const lines = s.trim().split('\n');
+          segments.push({ type: "progress", content: lines[0].trim() });
+          
+          const rest = lines.slice(1).join('\n').trim();
+          if (rest) {
+            segments.push({ type: "text", content: rest });
+          }
         } else {
           segments.push({ type: "text", content: s.trim() });
         }
@@ -77,16 +83,18 @@ export function MessageItem({ message }: MessageItemProps) {
               ) : part.type === "diff" ? (
                 <DiffViewer diffText={part.content} />
               ) : part.type === "progress" ? (
-                <div className="progress-status">
-                  <span className="progress-icon">
-                    {part.content.startsWith("> thought") ? <Cpu size={14} /> : <Loader2 size={14} className="spin-icon" />}
-                  </span>
-                  <span className="progress-text">
-                    {part.content.startsWith("> thought") ? "Thinking..." 
-                      : part.content.startsWith("> call:") ? "Executing tool..."
-                      : part.content.split('\n')[0].replace(/[[]>]/g, '').trim()}
-                  </span>
-                </div>
+                message.status !== "complete" && (
+                  <div className="progress-status">
+                    <span className="progress-icon">
+                      {part.content.startsWith("> thought") ? <Cpu size={14} /> : <Loader2 size={14} className="spin-icon" />}
+                    </span>
+                    <span className="progress-text">
+                      {part.content.startsWith("> thought") ? "Thinking..." 
+                        : part.content.startsWith("> call:") ? `Executing: ${part.content.replace("> call:", "").trim()}`
+                        : part.content.split('\n')[0].replace(/[[]>]/g, '').trim()}
+                    </span>
+                  </div>
+                )
               ) : (
                 <ReactMarkdown 
                   remarkPlugins={[remarkGfm, remarkEmoji]} 

@@ -151,17 +151,13 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.2s;
+  transition: all 0.2s;
 }
 
-.new-session-mini-btn { 
-  background: var(--gradient-primary) !important;
-  background-size: 200% 200% !important;
-  -webkit-background-clip: text !important;
-  -webkit-text-fill-color: transparent !important;
-  color: transparent !important;
-  animation: orb-bg-pan 4s infinite linear !important;
+.new-session-mini-btn svg {
+  stroke: url(#primary-gradient) !important;
 }
+
 .new-session-mini-btn:hover { background: rgba(168, 199, 250, 0.1); }
 .debug-session-mini-btn { color: var(--muted); }
 .debug-session-mini-btn:hover { background: rgba(168, 199, 250, 0.1); }
@@ -181,40 +177,38 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 8px 12px;
-  transition: all 0.15s;
+  padding: 6px 10px;
+  border-radius: 8px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   white-space: nowrap;
+  width: 100%;
+  box-sizing: border-box;
 }
 
-.dropdown-item:hover { background: transparent; }
-.dropdown-item:hover .item-title { 
-  background: var(--gradient-primary) !important;
-  background-size: 200% 200% !important;
-  -webkit-background-clip: text !important;
-  -webkit-text-fill-color: transparent !important;
-  color: transparent !important;
-  animation: orb-bg-pan 4s infinite linear !important;
-}
-.dropdown-item.selected { background: transparent; }
-.dropdown-item.selected .item-title {
-  background: var(--gradient-primary) !important;
-  background-size: 200% 200% !important;
-  -webkit-background-clip: text !important;
-  -webkit-text-fill-color: transparent !important;
-  color: transparent !important;
-  animation: orb-bg-pan 4s infinite linear !important;
-  font-weight: 600;
+.dropdown-item:hover,
+.dropdown-item.selected {
+  background-color: var(--bg-secondary) !important;
+  transform: translateY(-1.5px);
 }
 
 .item-title {
   font-size: 12px;
   font-weight: 500;
-  color: var(--ink);
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  transition: color 0.15s;
+  background: var(--gradient-primary) !important;
+  background-size: 200% 200% !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  color: transparent !important;
+  animation: orb-bg-pan 4s infinite linear !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dropdown-item.selected .item-title {
+  font-weight: 700;
 }
 
 .item-meta { font-size: 10px; color: var(--muted); opacity: 0.6; flex-shrink: 0; white-space: nowrap; }
@@ -1130,12 +1124,22 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
 .add { color: var(--ok) !important; }
 .del { color: var(--danger) !important; }
 
-/* Progress Status Styles */
-.progress-status { display: flex; align-items: center; gap: 8px; padding: 4px 8px; font-size: 12px; width: fit-content; }
-.progress-icon { 
-  display: flex; 
-  align-items: center; 
-  justify-content: center; 
+/* Progress Status Styles - Minimal Shiny Text */
+.progress-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 4px;
+  font-size: 11px;
+  width: fit-content;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+.progress-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: var(--gradient-primary) !important;
   background-size: 200% 200% !important;
   -webkit-background-clip: text !important;
@@ -1145,8 +1149,32 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
 }
 .spin-icon { animation: spin 2s linear infinite; }
 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-.progress-text { font-family: inherit; font-weight: 500; background: linear-gradient(90deg, var(--muted) 0%, var(--ink) 50%, var(--muted) 100%); background-size: 200% 100%; -webkit-background-clip: text; -webkit-text-fill-color: transparent; animation: shimmer 3s infinite linear; }
-.message-bubble.assistant.progress { padding: 0; background: transparent; }
+
+/* Shiny Text Animation cho chữ Executing... */
+.progress-text {
+  font-family: inherit;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  background: linear-gradient(
+    110deg,
+    rgba(255, 255, 255, 0.5) 0%,
+    rgba(255, 255, 255, 0.5) 40%,
+    rgba(255, 255, 255, 1) 50%,
+    rgba(255, 255, 255, 0.5) 60%,
+    rgba(255, 255, 255, 0.5) 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shiny-text 2.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes shiny-text {
+  0% { background-position: 200% center; }
+  100% { background-position: -200% center; }
+}
+
+.message-bubble.assistant.progress { padding: 0; background: transparent; box-shadow: none; border: none; backdrop-filter: none; }
 
 @media (max-width: 880px) { .session-sidebar { display: none; } }
 

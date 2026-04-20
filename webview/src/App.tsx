@@ -282,21 +282,20 @@ export default function App() {
 
   return (
     <div className="app-shell" onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave}>
-    <svg width="0" height="0" style={{ position: 'absolute' }}>
+      <svg style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden' }} aria-hidden="true">
         <defs>
           <linearGradient id="primary-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="rgba(168, 199, 250, 1)" />
-            <stop offset="50%" stopColor="rgba(197, 138, 249, 1)" />
-            <stop offset="100%" stopColor="rgba(138, 180, 248, 1)" />
+            <stop offset="0%" stopColor="#a8c7fa" />
+            <stop offset="50%" stopColor="#c58af9" />
+            <stop offset="100%" stopColor="#8ab4f8" />
           </linearGradient>
           <linearGradient id="gemini-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="rgba(168, 199, 250, 1)" />
-            <stop offset="50%" stopColor="rgba(197, 138, 249, 1)" />
-            <stop offset="100%" stopColor="rgba(138, 180, 248, 1)" />
+            <stop offset="0%" stopColor="#a8c7fa" />
+            <stop offset="50%" stopColor="#c58af9" />
+            <stop offset="100%" stopColor="#8ab4f8" />
           </linearGradient>
         </defs>
-      </svg>
-      <SessionSidebar
+      </svg>      <SessionSidebar
         sessions={sessions}
         activeSessionId={activeSession?.id || ""}
         debugMode={debugMode}
