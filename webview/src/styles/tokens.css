@@ -14,8 +14,8 @@
   --bg-secondary: rgba(168, 199, 250, 0.1);
   --gradient-start: #a8c7fa;
   --gradient-end: #c58af9;
-  --gradient-primary: linear-gradient(90deg, rgba(168, 199, 250, 0.8), rgba(197, 138, 249, 0.8), rgba(138, 180, 248, 0.8), rgba(168, 199, 250, 0.8));
-  --gradient-edit: linear-gradient(90deg, rgba(109, 213, 140, 0.8), rgba(168, 199, 250, 0.8), rgba(109, 213, 140, 0.8));
+  --gradient-primary: linear-gradient(90deg, #a8c7fa, #c58af9, #8ab4f8, #a8c7fa);
+  --gradient-edit: linear-gradient(90deg, #6dd58c, #a8c7fa, #6dd58c);
 }
 
 * { box-sizing: border-box; letter-spacing: -0.02em; -webkit-font-smoothing: antialiased; }
@@ -154,11 +154,32 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   transition: all 0.2s;
 }
 
-.new-session-mini-btn svg {
-  stroke: url(#primary-gradient) !important;
+.new-session-mini-btn {
+  all: unset;
+  cursor: pointer;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  background: var(--gradient-primary) !important;
+  background-size: 200% 200% !important;
+  animation: orb-bg-pan 4s infinite linear !important;
+  /* SVG Plus icon as mask */
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='12' y1='5' x2='12' y2='19'%3E%3C/line%3E%3Cline x1='5' y1='12' x2='19' y2='12'%3E%3C/line%3E%3C/svg%3E") no-repeat center;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cline x1='12' y1='5' x2='12' y2='19'%3E%3C/line%3E%3Cline x1='5' y1='12' x2='19' y2='12'%3E%3C/line%3E%3C/svg%3E") no-repeat center;
+  -webkit-mask-size: 14px;
+  mask-size: 14px;
+  transition: all 0.2s;
 }
 
-.new-session-mini-btn:hover { background: rgba(168, 199, 250, 0.1); }
+.new-session-mini-btn svg { display: none; }
+
+.new-session-mini-btn:hover { 
+  transform: scale(1.1);
+}
+
 .debug-session-mini-btn { color: var(--muted); }
 .debug-session-mini-btn:hover { background: rgba(168, 199, 250, 0.1); }
 .debug-session-mini-btn.active {
@@ -192,9 +213,11 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
 }
 
 .item-title {
-  font-size: 12px;
-  font-weight: 500;
-  flex: 1;
+  font-size: 13px;
+  font-weight: 600;
+  display: inline-block;
+  width: fit-content;
+  max-width: 200px; /* Giới hạn để không đè lên meta */
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -324,11 +347,11 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   border-radius: 50%;
   /* Đa sắc màu Gemini: Xanh dương, Tím, Đỏ san hô, kết hợp perspective tạo chất lỏng 3D nhẹ, opacity mềm hơn */
   background: 
-    radial-gradient(circle at 30% 30%, rgba(66, 133, 244, 0.35), transparent 60%), 
-    radial-gradient(circle at 70% 70%, rgba(197, 138, 249, 0.25), transparent 60%),
-    radial-gradient(circle at 80% 20%, rgba(234, 67, 53, 0.15), transparent 50%), 
-    radial-gradient(circle at 20% 80%, rgba(168, 199, 250, 0.2), transparent 50%);  
-  filter: blur(60px); /* Tăng độ nhòe cực đại để viền orb hòa quyện vào background (smooth blending) */
+    radial-gradient(circle at 30% 30%, rgba(66, 133, 244, 0.25), transparent 60%), 
+    radial-gradient(circle at 70% 70%, rgba(197, 138, 249, 0.2), transparent 60%),
+    radial-gradient(circle at 80% 20%, rgba(234, 67, 53, 0.1), transparent 50%), 
+    radial-gradient(circle at 20% 80%, rgba(168, 199, 250, 0.15), transparent 50%);  
+  filter: blur(80px); /* Tăng thêm độ nhòe để ánh sáng tỏa ra tự nhiên hơn */
   animation: orb-spin 12s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate;
   will-change: transform;
 }

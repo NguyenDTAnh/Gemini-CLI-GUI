@@ -264,7 +264,7 @@ export default function App() {
     
     el.style.setProperty("--mouse-x", `${x}px`);
     el.style.setProperty("--mouse-y", `${y}px`);
-    el.style.setProperty("--orb-opacity", "0.65");
+    el.style.setProperty("--orb-opacity", "0.15");
   };
 
   const handleMouseLeave = (e: React.MouseEvent<HTMLElement>) => {
