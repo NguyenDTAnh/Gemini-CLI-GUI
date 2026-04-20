@@ -306,7 +306,7 @@ export function Composer({
   ) => {
     const descriptor = commandDescriptors?.find((d) => `/${d.name}` === item.id);
     return (
-      <div className={`suggestion-item ${focused ? "active" : ""}`} style={{ padding: "4px 8px" }}>
+      <div className={`suggestion-item ${focused ? "active" : ""}`} style={{ padding: "4px 2px" }}>
         <div className="suggestion-row">
           <div className="suggestion-icon">{getSlashIcon(descriptor?.category)}</div>
           <div className="suggestion-name">{item.display}</div>
@@ -321,8 +321,8 @@ export function Composer({
     focused: boolean
   ) => {
     return (
-      <div className={`suggestion-item ${focused ? "active" : ""}`} style={{ padding: "6px 10px" }}>
-        <div className="suggestion-row" style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%' }}>
+      <div className={`suggestion-item ${focused ? "active" : ""}`} style={{ padding: "6px 2px" }}>
+        <div className="suggestion-row" style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '100%' }}>
           <div className="suggestion-icon" style={{ flexShrink: 0 }}>{getFileIcon(item.display)}</div>
           <div className="suggestion-name" style={{ flexShrink: 0, fontWeight: 600 }}>{item.display}</div>
           <div className="suggestion-path" style={{ 

@@ -1,4 +1,4 @@
-import { Plus, ChevronDown, MessageSquare, Trash2 } from "lucide-react";
+import { Plus, ChevronDown, Sparkle, Trash2 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { ChatSession } from "../types";
 
@@ -28,7 +28,7 @@ export function SessionSidebar({ sessions, activeSessionId, onCreate, onSelect, 
   return (
     <div className="session-selector" ref={dropdownRef}>
       <button className="current-session-btn" onClick={() => setIsOpen(!isOpen)}>
-        <MessageSquare size={14} className="session-icon" />
+        <Sparkle size={14} className="session-icon" />
         <span className="current-session-title">
           {activeSession?.title || "New Session"}
         </span>

@@ -41,6 +41,10 @@ export function ContentEditableInput({
 
   const [focusedIndex, setFocusedIndex] = useState(0);
 
+  const items = suggestionState?.type === 'slash'
+    ? slashCommands.filter(c => c.display.toLowerCase().includes(suggestionState.query.toLowerCase()))
+    : mentionCandidates;
+
   useEffect(() => {
     if (listRef.current && suggestionState?.active) {
       const activeItem = listRef.current.querySelector('.mentions-input__suggestions__item--focused') as HTMLElement;
@@ -69,7 +73,7 @@ export function ContentEditableInput({
         }
       }
     }
-  }, [focusedIndex, suggestionState?.active]);
+  }, [focusedIndex, suggestionState, items]);
 
   const getRawText = () => {
     if (!editorRef.current) return '';
@@ -249,10 +253,6 @@ export function ContentEditableInput({
     }
   }, [prefill]);
 
-  const items = suggestionState?.type === 'slash'
-    ? slashCommands.filter(c => c.display.toLowerCase().includes(suggestionState.query.toLowerCase()))
-    : mentionCandidates;
-
   return (
     <div className="content-editable-wrapper">
       <div
@@ -269,7 +269,7 @@ export function ContentEditableInput({
       
       {suggestionState && suggestionState.active && items.length > 0 && (
         <div className="mentions-input__suggestions">
-          <ul className="mentions-input__suggestions__list">
+          <ul ref={listRef} className="mentions-input__suggestions__list">
             {items.map((item, idx) => (
               <li 
                 key={item.id}

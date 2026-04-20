@@ -272,12 +272,17 @@ export default function App() {
 
   return (
     <div className="app-shell" onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave}>
-      <svg width="0" height="0" style={{ position: 'absolute' }}>
+    <svg width="0" height="0" style={{ position: 'absolute' }}>
         <defs>
-          <linearGradient id="gemini-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop stopColor="rgb(66, 133, 244)" offset="0%" />
-            <stop stopColor="rgb(197, 138, 249)" offset="50%" />
-            <stop stopColor="rgb(234, 67, 53)" offset="100%" />
+          <linearGradient id="primary-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="rgba(168, 199, 250, 1)" />
+            <stop offset="50%" stopColor="rgba(197, 138, 249, 1)" />
+            <stop offset="100%" stopColor="rgba(138, 180, 248, 1)" />
+          </linearGradient>
+          <linearGradient id="gemini-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="rgba(168, 199, 250, 1)" />
+            <stop offset="50%" stopColor="rgba(197, 138, 249, 1)" />
+            <stop offset="100%" stopColor="rgba(138, 180, 248, 1)" />
           </linearGradient>
         </defs>
       </svg>

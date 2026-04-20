@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Sparkles } from "lucide-react";
+import { Sparkle } from "lucide-react";
 import { ChatMessage } from "../types";
 import { MessageItem } from "./MessageItem";
 
@@ -29,7 +29,7 @@ export function ChatTimeline({ messages, onRetry }: ChatTimelineProps) {
     return (
       <div className="empty-state">
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", marginBottom: "8px" }}>
-          <Sparkles className="session-icon" size={20} />
+          <Sparkle className="session-icon" size={20} />
           <h3>Gemini CLI Chat</h3>
         </div>
       </div>
