@@ -211,9 +211,20 @@ function getSlashIcon(category?: string) {
     case "debug":
       return <Terminal size={14} />;
     default:
-      return <Sparkles size={14} />;
+      return <Sparkles size={14} stroke="url(#primary-gradient)" />;
   }
 }
+
+const SharedGradients = () => (
+  <svg width="0" height="0" style={{ position: 'absolute' }}>
+    <defs>
+      <linearGradient id="primary-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="var(--gradient-start, #0078d4)" />
+        <stop offset="100%" stopColor="var(--gradient-end, #00bcf2)" />
+      </linearGradient>
+    </defs>
+  </svg>
+);
 
 function getFileIcon(fileName: string) {
   const ext = fileName.split(".").pop()?.toLowerCase();
@@ -306,7 +317,7 @@ export function Composer({
   ) => {
     const descriptor = commandDescriptors?.find((d) => `/${d.name}` === item.id);
     return (
-      <div className={`suggestion-item ${focused ? "active" : ""}`} style={{ padding: "4px 2px" }}>
+      <div className={`suggestion-item ${focused ? "active" : ""}`} style={{ padding: "4px" }}>
         <div className="suggestion-row">
           <div className="suggestion-icon">{getSlashIcon(descriptor?.category)}</div>
           <div className="suggestion-name">{item.display}</div>
@@ -321,7 +332,7 @@ export function Composer({
     focused: boolean
   ) => {
     return (
-      <div className={`suggestion-item ${focused ? "active" : ""}`} style={{ padding: "6px 2px" }}>
+      <div className={`suggestion-item ${focused ? "active" : ""}`} style={{ padding: "6px" }}>
         <div className="suggestion-row" style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '100%' }}>
           <div className="suggestion-icon" style={{ flexShrink: 0 }}>{getFileIcon(item.display)}</div>
           <div className="suggestion-name" style={{ flexShrink: 0, fontWeight: 600 }}>{item.display}</div>
@@ -399,6 +410,7 @@ export function Composer({
       }}
       onDrop={handleDrop}
     >
+      <SharedGradients />
       {attachments.length > 0 && (
         <div className="composer-attachments">
           {attachments.map((attachment) => (
