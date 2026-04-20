@@ -424,24 +424,18 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
 }
 
 .avatar-box svg {
-  fill: url(#primary-gradient) !important;
-  stroke: url(#primary-gradient) !important;
-}
-
-.avatar-box svg * {
-  fill: inherit !important;
-  stroke: inherit !important;
+  display: block;
 }
 
 .message-row.user .avatar-box { background: #a8c7fa !important; }
 .message-row.user .avatar-box svg { 
-  fill: var(--bg-0) !important; 
-  stroke: var(--bg-0) !important;
+  color: var(--bg-0) !important;
 }
 .message-row.user .avatar-box svg * {
-  fill: inherit !important;
-  stroke: inherit !important;
+  fill: currentColor !important;
 }
+
+
 
 .message-content { display: flex; flex-direction: column; gap: 8px; flex: 1; min-width: 0; }
 .message-row.user .message-content { align-items: flex-end; }
@@ -946,7 +940,7 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 2px 8px;
+  padding: 2px 8px 2px 0;
   border-radius: 999px;
   background: var(--gradient-primary) !important;
   background-size: 200% 200% !important;
