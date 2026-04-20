@@ -446,6 +446,10 @@ export function Composer({
 
       <div className="composer-actions">
         <div className="action-left-group">
+          <button type="button" className="ghost-btn" onClick={onAttach} title="Attach file">
+            <Paperclip size={14} stroke="url(#primary-gradient)" />
+          </button>
+
           <button
             type="button"
             className={`mode-toggle-btn ${mode}`}
@@ -453,10 +457,6 @@ export function Composer({
             title={`Switch to ${mode === "plan" ? "Edit" : "Plan"} mode`}
           >
             {mode === "plan" ? "Plan" : "Edit"}
-          </button>
-
-          <button type="button" className="ghost-btn" onClick={onAttach} title="Attach file">
-            <Paperclip size={14} stroke="url(#primary-gradient)" />
           </button>
 
           <ModelSelector
