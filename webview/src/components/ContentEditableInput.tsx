@@ -267,11 +267,10 @@ export function ContentEditableInput({
         data-placeholder={placeholder}
       />
       
-      {/* HACK: Luôn hiển thị để Tình yêu chỉnh CSS */}
-      {true && (
+      {suggestionState && suggestionState.active && items.length > 0 && (
         <div className="mentions-input__suggestions">
           <ul ref={listRef} className="mentions-input__suggestions__list">
-            {(items.length > 0 ? items : slashCommands).map((item, idx) => (
+            {items.map((item, idx) => (
               <li
                 key={item.id}
                 onMouseDown={(e) => {
@@ -280,7 +279,7 @@ export function ContentEditableInput({
                 }}
                 className={`mentions-input__suggestions__item ${idx === focusedIndex ? 'mentions-input__suggestions__item--focused' : ''}`}
               >
-                {(suggestionState?.type || 'slash') === 'slash'
+                {suggestionState.type === 'slash'
                   ? renderSlashSuggestion(item, idx === focusedIndex)
                   : renderFileSuggestion(item, idx === focusedIndex)}
               </li>

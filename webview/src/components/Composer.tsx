@@ -193,25 +193,26 @@ function parseDroppedPathPayloads(dataTransfer: DataTransfer): DroppedFilePayloa
 
 const StopIcon = ({ size = 16 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <rect x="8" y="8" width="8" height="8" rx="1.5" fill="currentColor">
+    <rect x="8" y="8" width="8" height="8" rx="1.5" fill="url(#primary-gradient)">
       <animate attributeName="opacity" values="1;0.4;1" dur="2s" repeatCount="indefinite" />
     </rect>
-    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" strokeDasharray="20 40" strokeLinecap="round" opacity="0.8">
+    <circle cx="12" cy="12" r="10" stroke="url(#primary-gradient)" strokeWidth="2" strokeDasharray="20 40" strokeLinecap="round" opacity="0.8">
       <animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="1.5s" repeatCount="indefinite" />
     </circle>
   </svg>
 );
 
 function getSlashIcon(category?: string) {
+  const props = { size: 14, stroke: "url(#primary-gradient)" };
   switch (category) {
     case "analysis":
-      return <FileSearch size={14} />;
+      return <FileSearch {...props} />;
     case "editing":
-      return <FileCode size={14} />;
+      return <FileCode {...props} />;
     case "debug":
-      return <Terminal size={14} />;
+      return <Terminal {...props} />;
     default:
-      return <Sparkles size={14} stroke="url(#primary-gradient)" />;
+      return <Sparkles {...props} />;
   }
 }
 
@@ -228,6 +229,7 @@ const SharedGradients = () => (
 
 function getFileIcon(fileName: string) {
   const ext = fileName.split(".").pop()?.toLowerCase();
+  const props = { size: 14, stroke: "url(#primary-gradient)" };
   switch (ext) {
     case "ts":
     case "tsx":
@@ -239,22 +241,22 @@ function getFileIcon(fileName: string) {
     case "css":
     case "scss":
     case "less":
-      return <FileCode size={14} />;
+      return <FileCode {...props} />;
     case "png":
     case "jpg":
     case "jpeg":
     case "gif":
     case "svg":
     case "webp":
-      return <ImageIcon size={14} />;
+      return <ImageIcon {...props} />;
     case "md":
     case "txt":
     case "json":
     case "yml":
     case "yaml":
-      return <FileText size={14} />;
+      return <FileText {...props} />;
     default:
-      return <FileText size={14} />;
+      return <FileText {...props} />;
   }
 }
 
@@ -421,7 +423,7 @@ export function Composer({
                 className="chip-remove"
                 onClick={() => onRemoveAttachment(attachment.id)}
               >
-                <X size={12} />
+                <X size={12} stroke="url(#primary-gradient)" />
               </button>
             </span>
           ))}
@@ -454,7 +456,7 @@ export function Composer({
           </button>
 
           <button type="button" className="ghost-btn" onClick={onAttach} title="Attach file">
-            <Paperclip size={14} />
+            <Paperclip size={14} stroke="url(#primary-gradient)" />
           </button>
 
           <ModelSelector
@@ -469,7 +471,7 @@ export function Composer({
             <button type="button" className="primary-btn" title="Send message" onClick={() => {
                // The content editable input handles Enter to submit directly
             }}>
-              <SendHorizonal size={16} />
+              <SendHorizonal size={16} stroke="url(#primary-gradient)" />
             </button>
           )}
 
