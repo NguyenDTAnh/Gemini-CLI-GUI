@@ -16,9 +16,22 @@
   --gradient-end: #c58af9;
   --gradient-primary: linear-gradient(90deg, #a8c7fa, #c58af9, #8ab4f8, #a8c7fa);
   --gradient-edit: linear-gradient(90deg, #6dd58c, #a8c7fa, #6dd58c);
-}
+  }
 
-* { box-sizing: border-box; letter-spacing: -0.02em; -webkit-font-smoothing: antialiased; }
+  @property --mouse-x {
+  syntax: '<length>';
+  initial-value: 50%;
+  inherits: true;
+  }
+
+  @property --mouse-y {
+  syntax: '<length>';
+  initial-value: 50%;
+  inherits: true;
+  }
+
+  * { box-sizing: border-box; 
+ letter-spacing: -0.02em; -webkit-font-smoothing: antialiased; }
 
 html, body, #root {
   margin: 0;
@@ -307,15 +320,16 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   background: var(--gradient-primary);
   background-size: 200% 200%;
   animation: orb-bg-pan 4s infinite linear;
+  transition: --mouse-x 0.3s cubic-bezier(0.1, 0.9, 0.2, 1), --mouse-y 0.3s cubic-bezier(0.1, 0.9, 0.2, 1);
   
   /* Kết hợp mask của Lưới chấm và Vùng lộ sáng quanh chuột bằng mask-composite */
-  -webkit-mask-image: radial-gradient(black 1.5px, transparent 1.5px), radial-gradient(200px circle at var(--mouse-x, 50%) var(--mouse-y, 50%), black 0%, transparent 100%);
+  -webkit-mask-image: radial-gradient(black 1.5px, transparent 1.5px), radial-gradient(265px circle at var(--mouse-x, 50%) var(--mouse-y, 50%), black 0%, transparent 100%);
   -webkit-mask-size: 24px 24px, 100% 100%;
-  -webkit-mask-position: calc((var(--mouse-x, 50%) - 50%) * 0.05) calc((var(--mouse-y, 50%) - 50%) * 0.05), 0 0;
+  -webkit-mask-position: calc((var(--mouse-x, 50%) - 50%) * 0.09) calc((var(--mouse-y, 50%) - 50%) * 0.09), 0 0;
   -webkit-mask-composite: source-in;
-  mask-image: radial-gradient(black 1.5px, transparent 1.5px), radial-gradient(200px circle at var(--mouse-x, 50%) var(--mouse-y, 50%), black 0%, transparent 100%);
+  mask-image: radial-gradient(black 1.5px, transparent 1.5px), radial-gradient(265px circle at var(--mouse-x, 50%) var(--mouse-y, 50%), black 0%, transparent 100%);
   mask-size: 24px 24px, 100% 100%;
-  mask-position: calc((var(--mouse-x, 50%) - 50%) * 0.05) calc((var(--mouse-y, 50%) - 50%) * 0.05), 0 0;
+  mask-position: calc((var(--mouse-x, 50%) - 50%) * 0.09) calc((var(--mouse-y, 50%) - 50%) * 0.09), 0 0;
   mask-composite: intersect;
   will-change: mask-position;
 }
