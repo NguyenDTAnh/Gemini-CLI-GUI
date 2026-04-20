@@ -226,7 +226,7 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   position: relative;
 }
 
-/* Lớp Base Lưới Chấm mờ đục (Zero Lag) */
+/* Lớp Base Lưới Chấm mờ đục (Zero Lag), thêm chuyển động chéo chậm rãi */
 .chat-panel-bg {
   position: absolute;
   inset: 0;
@@ -236,6 +236,44 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   pointer-events: none;
   background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
   background-size: 24px 24px;
+  animation: grid-drift 20s linear infinite;
+}
+
+@keyframes grid-drift {
+  0% { background-position: 0px 0px; }
+  100% { background-position: 48px 48px; /* Lướt chéo mượt mà, bội số của 24px */ }
+}
+
+/* Hiệu ứng Sóng ánh sáng chéo (Ambient Diagonal Wave) - Hoà trộn vào nền gốc */
+.chat-panel-bg::before {
+  content: "";
+  position: absolute;
+  inset: -50%; /* Trải rộng ra để lúc di chuyển không bị đứt góc */
+  z-index: -1;
+  /* Sóng gradient mềm mại, không dùng mask chấm nữa để thấy rõ khối sóng lướt qua */
+  background: linear-gradient(135deg, 
+    transparent 0%, 
+    rgba(168, 199, 250, 0.05) 25%, 
+    rgba(197, 138, 249, 0.12) 50%, 
+    rgba(109, 213, 140, 0.05) 75%, 
+    transparent 100%
+  );
+  background-size: 200% 200%;
+  /* Animation chạy lặp đi lặp lại mượt mà */
+  animation: diagonal-wave 8s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate;
+  /* Quan trọng nhất: Mix blend mode screen giữ nguyên background gốc, chỉ làm sáng nó lên ở những nơi sóng đi qua */
+  mix-blend-mode: screen;
+}
+
+@keyframes diagonal-wave {
+  0% { 
+    background-position: 0% 0%; 
+    filter: hue-rotate(0deg); 
+  }
+  100% { 
+    background-position: 100% 100%; 
+    filter: hue-rotate(45deg); 
+  }
 }
 
 /* Lớp Magnetic/Proximity Lưới Chấm tương tác với chuột */

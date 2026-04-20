@@ -1,4 +1,5 @@
-import { Sparkle, User, Cpu, Loader2 } from "lucide-react";
+import { User, Cpu, Loader2 } from "lucide-react";
+import { GeminiLogo } from "./GeminiLogo";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkEmoji from "remark-emoji";
@@ -54,7 +55,7 @@ export function MessageItem({ message }: MessageItemProps) {
         <header className="message-head">
           <div className="avatar-box">
             {isAssistant ? (
-              <Sparkle size={12} fill="currentColor" />
+              <GeminiLogo size={14} />
             ) : (
               <User size={12} fill="currentColor" />
             )}
