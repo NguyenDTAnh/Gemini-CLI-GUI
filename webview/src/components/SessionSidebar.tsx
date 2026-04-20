@@ -1,4 +1,4 @@
-import { Plus, ChevronDown, Trash2 } from "lucide-react";
+import { Plus, ChevronDown, Trash2, Bug } from "lucide-react";
 import { GeminiLogo } from "./GeminiLogo";
 import { useState, useRef, useEffect } from "react";
 import { ChatSession } from "../types";
@@ -6,12 +6,22 @@ import { ChatSession } from "../types";
 interface SessionSidebarProps {
   sessions: ChatSession[];
   activeSessionId: string;
+  debugMode: boolean;
   onCreate: () => void;
   onSelect: (sessionId: string) => void;
   onClear: () => void;
+  onToggleDebug: () => void;
 }
 
-export function SessionSidebar({ sessions, activeSessionId, onCreate, onSelect, onClear }: SessionSidebarProps) {
+export function SessionSidebar({
+  sessions,
+  activeSessionId,
+  debugMode,
+  onCreate,
+  onSelect,
+  onClear,
+  onToggleDebug
+}: SessionSidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const activeSession = sessions.find(s => s.id === activeSessionId) || sessions[0];
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -43,6 +53,13 @@ export function SessionSidebar({ sessions, activeSessionId, onCreate, onSelect, 
             <div className="dropdown-actions">
               <button className="new-session-mini-btn" onClick={() => { onCreate(); setIsOpen(false); }} title="New session">
                 <Plus size={14} />
+              </button>
+              <button
+                className={`debug-session-mini-btn ${debugMode ? "active" : ""}`}
+                onClick={onToggleDebug}
+                title={debugMode ? "Disable debug mode" : "Enable debug mode"}
+              >
+                <Bug size={14} />
               </button>
               <button className="clear-session-mini-btn" onClick={() => { onClear(); setIsOpen(false); }} title="Clear all sessions">
                 <Trash2 size={14} />

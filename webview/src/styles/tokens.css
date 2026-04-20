@@ -143,7 +143,7 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
 
 .dropdown-actions { display: inline-flex; align-items: center; gap: 6px; }
 
-.new-session-mini-btn, .clear-session-mini-btn {
+.new-session-mini-btn, .debug-session-mini-btn, .clear-session-mini-btn {
   all: unset;
   cursor: pointer;
   padding: 4px;
@@ -163,6 +163,12 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   animation: orb-bg-pan 4s infinite linear !important;
 }
 .new-session-mini-btn:hover { background: rgba(168, 199, 250, 0.1); }
+.debug-session-mini-btn { color: var(--muted); }
+.debug-session-mini-btn:hover { background: rgba(168, 199, 250, 0.1); }
+.debug-session-mini-btn.active {
+  color: var(--ok);
+  background: rgba(109, 213, 140, 0.15);
+}
 .clear-session-mini-btn { color: var(--danger); }
 .clear-session-mini-btn:hover { background: rgba(242, 184, 181, 0.1); }
 

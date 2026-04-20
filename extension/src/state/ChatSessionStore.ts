@@ -45,6 +45,12 @@ export class ChatSessionStore {
     this.state.sessions = [session, ...this.state.sessions];
     this.state.activeSessionId = session.id;
     await this.persist();
+    console.log("ChatSessionStore: createSession", {
+      sessionId: session.id,
+      title: session.title,
+      activeSessionId: this.state.activeSessionId,
+      sessionCount: this.state.sessions.length
+    });
     return session;
   }
 
@@ -90,6 +96,10 @@ export class ChatSessionStore {
     this.state.sessions = [fresh];
     this.state.activeSessionId = fresh.id;
     await this.persist();
+    console.log("ChatSessionStore: clearAll", {
+      activeSessionId: this.state.activeSessionId,
+      sessionCount: this.state.sessions.length
+    });
     return fresh;
   }
 

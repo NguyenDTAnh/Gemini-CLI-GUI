@@ -82,12 +82,41 @@ export class GeminiProcessManager {
 
     resetTimer();
 
+    let stdoutBuffer = "";
+
     process.stdout.on("data", (chunk: string) => {
       if (active.done || active.cancelled) {
         return;
       }
       resetTimer();
-      options.onChunk(chunk);
+      
+      stdoutBuffer += chunk;
+      
+      let newlineIndex;
+      while ((newlineIndex = stdoutBuffer.indexOf('\n')) !== -1) {
+        const line = stdoutBuffer.slice(0, newlineIndex).trim();
+        stdoutBuffer = stdoutBuffer.slice(newlineIndex + 1);
+        
+        if (!line) continue;
+        
+        try {
+          const event = JSON.parse(line);
+          if (event.type === "message" && event.role === "assistant") {
+            if (event.delta && event.content) {
+              options.onChunk(event.content);
+            } else if (!event.delta && event.content) {
+              options.onChunk(event.content);
+            }
+          } else if (event.type === "tool_use") {
+            options.onChunk(`\n> call: ${event.tool_name}\n`);
+          } else if (event.type === "tool_result") {
+            // Optional: emit something or let it be
+          }
+        } catch(e) {
+          // Fallback if not stream-json
+          options.onChunk(line + '\n');
+        }
+      }
     });
 
     process.stderr.on("data", (chunk: string) => {
@@ -100,6 +129,17 @@ export class GeminiProcessManager {
     });
 
     process.on("close", (code, signal) => {
+      if (stdoutBuffer.trim() && !active.done && !active.cancelled) {
+        try {
+          const event = JSON.parse(stdoutBuffer.trim());
+          if (event.type === "message" && event.role === "assistant" && event.content) {
+            options.onChunk(event.content);
+          }
+        } catch {
+          options.onChunk(stdoutBuffer);
+        }
+      }
+
       if (active.done) {
         return;
       }

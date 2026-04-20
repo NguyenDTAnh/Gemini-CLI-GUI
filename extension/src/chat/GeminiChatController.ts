@@ -35,6 +35,7 @@ export class GeminiChatController {
   private readonly processManager = new GeminiProcessManager();
   private readonly slashRouter = new SlashCommandRouter();
   private readonly contextCollector = new ContextCollector();
+  private debugModeEnabled = false;
   private mentionSearchSeq = 0;
   private mentionIndexCache?: MentionIndexCache;
   private activeRequest?: { requestId: string; sessionId: string; assistantMessageId: string };
@@ -65,12 +66,14 @@ export class GeminiChatController {
 
   async createSession(): Promise<void> {
     const session = await this.store.createSession();
-    this.post({ type: "sessionUpdated", session });
+    console.log("GeminiChatController: createSession", { sessionId: session.id, activeSessionId: session.id });
+    this.post({ type: "sessionUpdated", session, activeSessionId: session.id });
   }
 
   async clearSessions(): Promise<void> {
     await this.stopActiveRequest();
     const initial = await this.store.clearAll();
+    console.log("GeminiChatController: clearSessions", { activeSessionId: initial.id, sessionCount: 1 });
     this.post({
       type: "sessionsCleared",
       payload: {
@@ -168,6 +171,14 @@ export class GeminiChatController {
       case "stopGeneration":
         await this.stopActiveRequest();
         return;
+      case "toggleDebugMode":
+        this.debugModeEnabled = message.enabled;
+        this.post({ type: "debugModeToggled", enabled: this.debugModeEnabled });
+        this.post({
+          type: "info",
+          message: this.debugModeEnabled ? "Debug mode enabled." : "Debug mode disabled."
+        });
+        return;
       case "attachFile":
         await this.pickAndAttach();
         return;
@@ -214,7 +225,12 @@ export class GeminiChatController {
 
     const preferredModel = (session.defaultModelId || "").trim();
     const modelName = preferredModel || this.extractModelNameFromArgs(defaultArgs) || "Gemini";
-    const resolvedArgs = preferredModel ? this.overrideModelArg(defaultArgs, preferredModel) : defaultArgs;
+    const baseArgs = preferredModel ? this.overrideModelArg(defaultArgs, preferredModel) : defaultArgs;
+    
+    // Always force stream-json to get structured events for tool calls and streams
+    const cleanArgs = baseArgs.filter(a => !["--output-format", "-o", "stream-json", "json", "text"].includes(a));
+    const resolvedArgs = [...cleanArgs, "--output-format", "stream-json"];
+
     const effectiveMode = route.commandMeta?.mode ?? session.activeMode ?? "plan";
 
     const assistantMessage: ChatMessage = {
@@ -529,6 +545,8 @@ export class GeminiChatController {
         availableModels: this.getAvailableModels()
       }
     });
+
+    this.post({ type: "debugModeToggled", enabled: this.debugModeEnabled });
   }
 
   private post(message: ExtensionToWebviewMessage): void {

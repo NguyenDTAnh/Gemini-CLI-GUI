@@ -76,7 +76,7 @@ export interface BootstrapPayload {
 
 export type ExtensionToWebviewMessage =
   | { type: "bootstrapped"; payload: BootstrapPayload }
-  | { type: "sessionUpdated"; session: ChatSession }
+  | { type: "sessionUpdated"; session: ChatSession; activeSessionId?: string }
   | { type: "sessionsCleared"; payload: BootstrapPayload }
   | { type: "assistantStream"; sessionId: string; requestId: string; chunk: string }
   | { type: "generationState"; running: boolean; requestId?: string }
@@ -84,6 +84,7 @@ export type ExtensionToWebviewMessage =
   | { type: "fileSearchResults"; query: string; suggestions: string[] }
   | { type: "modelUpdated"; sessionId: string; modelId: string }
   | { type: "modeUpdated"; sessionId: string; mode: ChatMode }
+  | { type: "debugModeToggled"; enabled: boolean }
   | { type: "info"; message: string }
   | { type: "error"; message: string };
 
@@ -99,6 +100,7 @@ export type WebviewToExtensionMessage =
   | { type: "insertSelectedContext"; sessionId: string; text: string; source?: "editorSelection" | "manual" }
   | { type: "retryLast"; sessionId: string }
   | { type: "stopGeneration" }
+  | { type: "toggleDebugMode"; enabled: boolean }
   | { type: "attachFile" }
   | { type: "removeAttachment"; sessionId: string; attachmentId: string }
   | { type: "clearSessions" };
