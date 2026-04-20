@@ -280,24 +280,18 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   100% { background-position: 48px 48px; /* Lướt chéo mượt mà, bội số của 24px */ }
 }
 
-/* Hiệu ứng Sóng ánh sáng chéo (Ambient Diagonal Wave) - Hoà trộn vào nền gốc */
+/* Hiệu ứng Ambient Vertical Gradient - Làm nền tĩnh mượt mà đổ từ trên xuống */
 .chat-panel-bg::before {
   content: "";
   position: absolute;
-  inset: -50%; /* Trải rộng ra để lúc di chuyển không bị đứt góc */
+  inset: 0;
   z-index: -1;
-  /* Sóng gradient mềm mại, không dùng mask chấm nữa để thấy rõ khối sóng lướt qua */
-  background: linear-gradient(135deg, 
-    transparent 0%, 
-    rgba(168, 199, 250, 0.05) 25%, 
-    rgba(197, 138, 249, 0.12) 50%, 
-    rgba(109, 213, 140, 0.05) 75%, 
+  /* Gradient dọc: Tím nhẹ ở trên, Xanh dương nhạt ở giữa và hòa vào nền tối ở dưới */
+  background: linear-gradient(to bottom, 
+    rgba(197, 138, 249, 0.08) 0%, 
+    rgba(168, 199, 250, 0.05) 40%, 
     transparent 100%
   );
-  background-size: 200% 200%;
-  /* Animation chạy lặp đi lặp lại mượt mà */
-  animation: diagonal-wave 8s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate;
-  /* Quan trọng nhất: Mix blend mode screen giữ nguyên background gốc, chỉ làm sáng nó lên ở những nơi sóng đi qua */
   mix-blend-mode: screen;
 }
 
