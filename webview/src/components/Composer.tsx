@@ -1,6 +1,7 @@
 import * as React from "react";
 import { FileCode, FileSearch, FileText, Image as ImageIcon, Paperclip, SendHorizonal, Sparkles, Terminal, X } from "lucide-react";
 import { Attachment, ChatMode, DroppedFilePayload, SlashCommandDescriptor } from "../types";
+import { AgentSelector } from "./AgentSelector";
 import { ModelSelector } from "./ModelSelector";
 import { ContentEditableInput, SuggestionItem } from "./ContentEditableInput";
 
@@ -35,6 +36,8 @@ interface ComposerProps {
   modelId: string;
   modelLabel: string;
   modelOptions: string[];
+  agentId: string;
+  agentOptions: string[];
   slashCommands: string[];
   commandDescriptors?: SlashCommandDescriptor[];
   mentionCandidates: { name: string; fsPath: string }[];
@@ -43,6 +46,7 @@ interface ComposerProps {
   onStop: () => void;
   onAttach: () => void;
   onSetMode: (mode: ChatMode) => void;
+  onSetAgent: (agentId: string) => void;
   onSetModel: (modelId: string) => void;
   onAttachFiles: (files: DroppedFilePayload[]) => void;
   onRemoveAttachment: (attachmentId: string) => void;
@@ -266,6 +270,8 @@ export function Composer({
   mode,
   modelId,
   modelOptions,
+  agentId,
+  agentOptions,
   slashCommands,
   commandDescriptors,
   mentionCandidates,
@@ -274,6 +280,7 @@ export function Composer({
   onStop,
   onAttach,
   onSetMode,
+  onSetAgent,
   onSetModel,
   onAttachFiles,
   onRemoveAttachment,
@@ -292,6 +299,11 @@ export function Composer({
     const others = resolvedModelOptions.filter((o) => !core.includes(o));
     return [...core, ...others];
   }, [resolvedModelOptions]);
+
+  const resolvedAgentOptions = React.useMemo(() => {
+    const list = [...agentOptions, agentId].filter((item) => Boolean(item.trim()));
+    return [...new Set(list)];
+  }, [agentOptions, agentId]);
 
   const slashMentionData = React.useMemo(() => {
     return slashCommands.map((cmd) => ({ id: cmd, display: cmd }));
@@ -458,6 +470,12 @@ export function Composer({
           >
             {mode === "plan" ? "Plan" : "Edit"}
           </button>
+
+          <AgentSelector
+            agentId={agentId}
+            agentOptions={resolvedAgentOptions}
+            onSelect={onSetAgent}
+          />
 
           <ModelSelector
             modelId={modelId}

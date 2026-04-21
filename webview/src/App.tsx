@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Composer } from "./components/Composer";
 import { ChatTimeline } from "./components/ChatTimeline";
 import { SessionSidebar } from "./components/SessionSidebar";
@@ -12,6 +12,7 @@ import {
 import { vscode } from "./vscode";
 
 const DEFAULT_SLASH_COMMANDS = ["/explain", "/fix", "/summarize", "/tests"];
+const DEFAULT_AGENT_OPTIONS = ["codebase_investigator", "cli_help", "generalist"];
 const DEFAULT_MODEL_OPTIONS = [
   "auto",
   "gemini-3.1-pro-preview",
@@ -45,6 +46,7 @@ export default function App() {
   const [debugMode, setDebugMode] = useState<boolean>(Boolean(persistedState?.debugMode));
   const [running, setRunning] = useState(false);
   const [banner, setBanner] = useState<{ kind: "info" | "error"; text: string } | null>(null);
+  const [availableAgents, setAvailableAgents] = useState<string[]>(DEFAULT_AGENT_OPTIONS);
   const [availableModels, setAvailableModels] = useState<string[]>(DEFAULT_MODEL_OPTIONS);
   const [slashCommands, setSlashCommands] = useState<string[]>(DEFAULT_SLASH_COMMANDS);
   const [commandDescriptors, setCommandDescriptors] = useState<SlashCommandDescriptor[]>([]);
@@ -90,6 +92,7 @@ export default function App() {
         case "bootstrapped": {
           setSessions(message.payload.sessions);
           setActiveSessionId(message.payload.activeSessionId);
+          setAvailableAgents(message.payload.availableAgents?.length ? message.payload.availableAgents : DEFAULT_AGENT_OPTIONS);
           setAvailableModels(message.payload.availableModels?.length ? message.payload.availableModels : DEFAULT_MODEL_OPTIONS);
           setSlashCommands(message.payload.supportedCommands?.length ? message.payload.supportedCommands : DEFAULT_SLASH_COMMANDS);
           setCommandDescriptors(message.payload.commandDescriptors || []);
@@ -231,6 +234,38 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [activeSession?.id]);
 
+  const cycleAgent = useCallback(() => {
+    if (!activeSession?.id || availableAgents.length === 0) {
+      return;
+    }
+
+    const currentAgentId = (activeSession.defaultAgentId || "").trim();
+    const currentIndex = availableAgents.findIndex((item) => item === currentAgentId);
+    const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % availableAgents.length;
+    const nextAgentId = availableAgents[nextIndex];
+
+    postMessage({
+      type: "setAgent",
+      sessionId: activeSession.id,
+      agentId: nextAgentId
+    });
+  }, [activeSession?.defaultAgentId, activeSession?.id, availableAgents]);
+
+  useEffect(() => {
+    const handleCycleAgentShortcut = (event: KeyboardEvent) => {
+      const triggerCycle = (event.metaKey || event.ctrlKey) && event.shiftKey && event.code === "KeyA";
+      if (!triggerCycle) {
+        return;
+      }
+
+      event.preventDefault();
+      cycleAgent();
+    };
+
+    window.addEventListener("keydown", handleCycleAgentShortcut);
+    return () => window.removeEventListener("keydown", handleCycleAgentShortcut);
+  }, [cycleAgent]);
+
   const sendPrompt = (prompt: string) => {
     if (!activeSession?.id) {
       return;
@@ -327,6 +362,8 @@ export default function App() {
           modelId={activeSession?.defaultModelId || "auto"}
           modelLabel={activeSession?.defaultModelId || "Auto: Gemini CLI default"}
           modelOptions={availableModels}
+          agentId={activeSession?.defaultAgentId || ""}
+          agentOptions={availableAgents}
           slashCommands={slashCommands}
           commandDescriptors={commandDescriptors}
           mentionCandidates={mentionCandidates}
@@ -351,6 +388,14 @@ export default function App() {
               type: "toggleMode",
               sessionId: activeSession.id,
               mode
+            })
+          }
+          onSetAgent={(agentId) =>
+            activeSession?.id &&
+            postMessage({
+              type: "setAgent",
+              sessionId: activeSession.id,
+              agentId
             })
           }
           onSetModel={(modelId) =>

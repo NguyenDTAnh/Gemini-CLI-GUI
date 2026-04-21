@@ -26,7 +26,8 @@
         {
           "id": "geminiCliChat.views.main",
           "name": "Chat",
-          "type": "webview"
+          "type": "webview",
+          "icon": "resources/icon.svg"
         }
       ]
     },
@@ -94,6 +95,18 @@
             "gemini-2.5-flash-lite"
           ],
           "description": "Model list shown in chat UI selector. Values are passed to --model."
+        },
+        "geminiCliChat.availableAgents": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "codebase_investigator",
+            "cli_help",
+            "generalist"
+          ],
+          "description": "Agent list shown in chat UI selector. Values are sent to Gemini CLI as /<agent-id>."
         },
         "geminiCliChat.customSlashCommands": {
           "type": "object",

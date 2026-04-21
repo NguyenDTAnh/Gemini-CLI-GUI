@@ -63,6 +63,7 @@ export interface ChatSession {
   attachments: Attachment[];
   messages: ChatMessage[];
   activeMode?: ChatMode;
+  defaultAgentId?: string;
   defaultModelId?: string;
 }
 
@@ -71,6 +72,7 @@ export interface BootstrapPayload {
   activeSessionId: string;
   supportedCommands?: string[];
   commandDescriptors?: SlashCommandDescriptor[];
+  availableAgents?: string[];
   availableModels?: string[];
 }
 
@@ -94,6 +96,7 @@ export type WebviewToExtensionMessage =
   | { type: "switchSession"; sessionId: string }
   | { type: "searchFiles"; query: string }
   | { type: "sendPrompt"; sessionId: string; prompt: string }
+  | { type: "setAgent"; sessionId: string; agentId: string }
   | { type: "setModel"; sessionId: string; modelId: string }
   | { type: "toggleMode"; sessionId: string; mode: ChatMode }
   | { type: "attachFiles"; sessionId: string; files: DroppedFilePayload[] }

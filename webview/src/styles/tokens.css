@@ -637,17 +637,20 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
 }
 
 .action-left-group button,
-.action-left-group .model-selector-trigger {
+.action-left-group .model-selector-trigger,
+.action-left-group .agent-selector-trigger {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 .action-left-group button:hover,
-.action-left-group .model-selector-trigger:hover {
+.action-left-group .model-selector-trigger:hover,
+.action-left-group .agent-selector-trigger:hover {
   transform: translateY(-1.5px);
 }
 
 .action-left-group button:not(.mode-toggle-btn):not(.model-item):hover,
-.action-left-group .model-selector-trigger:hover {
+.action-left-group .model-selector-trigger:hover,
+.action-left-group .agent-selector-trigger:hover {
   background: transparent !important;
 }
 
@@ -678,6 +681,31 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
 
 .model-selector-trigger:hover {
   background: rgba(255, 255, 255, 0.04);
+}
+
+.agent-selector-trigger {
+  all: unset;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: transparent;
+}
+
+.agent-selector-trigger:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.agent-selector-trigger.active {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.agent-selector-trigger:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .current-model-name {

@@ -6,6 +6,7 @@ interface RunRequestOptions {
   args: string[];
   cwd?: string;
   timeoutMs: number;
+  agentCommand?: string;
   prompt: string;
   responseLanguage: string;
   contextText: string;
@@ -35,7 +36,7 @@ export class GeminiProcessManager {
       return;
     }
 
-    const envelope = this.buildEnvelope(options.prompt, options.contextText, options.responseLanguage);
+    const envelope = this.buildEnvelope(options.prompt, options.contextText, options.responseLanguage, options.agentCommand);
     const useArgPrompt = options.args.some((arg) => arg.includes("{{prompt}}"));
     const resolvedArgs = useArgPrompt
       ? options.args.map((arg) => arg.replaceAll("{{prompt}}", envelope))
@@ -238,8 +239,9 @@ export class GeminiProcessManager {
     this.requests.delete(requestId);
   }
 
-  private buildEnvelope(prompt: string, contextText: string, responseLanguage: string): string {
+  private buildEnvelope(prompt: string, contextText: string, responseLanguage: string, agentCommand?: string): string {
     const sections = [
+      ...(agentCommand ? [agentCommand] : []),
       "You are Gemini CLI running inside VS Code extension.",
       `Respond in language: ${responseLanguage}.`,
       "If context files are provided, use them as primary source.",

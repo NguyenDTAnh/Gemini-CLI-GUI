@@ -156,6 +156,9 @@ export class GeminiChatController {
       case "setModel":
         await this.setModel(message.sessionId, message.modelId);
         return;
+      case "setAgent":
+        await this.setAgent(message.sessionId, message.agentId);
+        return;
       case "toggleMode":
         await this.setMode(message.sessionId, message.mode);
         return;
@@ -232,6 +235,7 @@ export class GeminiChatController {
     const resolvedArgs = [...cleanArgs, "--output-format", "stream-json"];
 
     const effectiveMode = route.commandMeta?.mode ?? session.activeMode ?? "plan";
+    const selectedAgent = (session.defaultAgentId || "").trim();
 
     const assistantMessage: ChatMessage = {
       id: randomUUID(),
@@ -288,6 +292,7 @@ export class GeminiChatController {
       args: resolvedArgs,
       cwd: vscode.workspace.workspaceFolders?.[0]?.uri.fsPath,
       timeoutMs,
+      agentCommand: selectedAgent ? `/${selectedAgent}` : undefined,
       prompt: transformedPrompt,
       responseLanguage,
       contextText,
@@ -426,6 +431,16 @@ export class GeminiChatController {
     this.post({ type: "modelUpdated", sessionId: session.id, modelId: nextModel });
   }
 
+  private async setAgent(sessionId: string, agentId: string): Promise<void> {
+    const session = await this.ensureSession(sessionId);
+    const nextAgent = agentId.trim();
+
+    session.defaultAgentId = nextAgent || undefined;
+    session.updatedAt = Date.now();
+    await this.store.upsertSession(session);
+    this.post({ type: "sessionUpdated", session });
+  }
+
   private async setMode(sessionId: string, mode: ChatMode): Promise<void> {
     const session = await this.ensureSession(sessionId);
     session.activeMode = mode;
@@ -542,6 +557,7 @@ export class GeminiChatController {
         activeSessionId: this.store.getActiveSessionId(),
         supportedCommands: this.slashRouter.getSupportedCommands(),
         commandDescriptors,
+        availableAgents: this.getAvailableAgents(),
         availableModels: this.getAvailableModels()
       }
     });
@@ -620,6 +636,22 @@ export class GeminiChatController {
     const source = configuredModels.length > 0 ? configuredModels : fallbackModels;
     const normalized = source.filter((item) => item !== "auto" && item !== "manual");
     return [...new Set(["auto", ...normalized, "manual"] )];
+  }
+
+  private getAvailableAgents(): string[] {
+    const config = vscode.workspace.getConfiguration("geminiCliChat");
+    const configuredAgents = (config.get<string[]>("availableAgents", []) || [])
+      .map((item) => item.trim())
+      .filter((item) => Boolean(item));
+
+    const fallbackAgents = [
+      "codebase_investigator",
+      "cli_help",
+      "generalist"
+    ];
+
+    const source = configuredAgents.length > 0 ? configuredAgents : fallbackAgents;
+    return [...new Set(source)];
   }
 
   private async searchFiles(query: string): Promise<void> {
