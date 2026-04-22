@@ -167,8 +167,8 @@ export class GeminiProcessManager {
     process.stdin.end();
   }
 
-  stopRequest(requestId: string, signal: NodeJS.Signals = "SIGINT"): boolean {
-    console.log(`GeminiProcessManager: stopRequest called for ${requestId}`);
+  stopRequest(requestId: string, signal: NodeJS.Signals = "SIGKILL"): boolean {
+    console.log(`GeminiProcessManager: stopRequest called for ${requestId} with signal ${signal}`);
     const active = this.requests.get(requestId);
     if (!active || active.done) {
       console.log(`GeminiProcessManager: stopRequest - request ${requestId} not found or already done`);
@@ -177,8 +177,22 @@ export class GeminiProcessManager {
 
     active.cancelled = true;
     try {
-      console.log(`GeminiProcessManager: killing process for ${requestId} with signal ${signal}`);
-      active.process.kill(signal);
+      if (active.process.pid) {
+        console.log(`GeminiProcessManager: killing process group for ${requestId} (pid: ${active.process.pid})`);
+        if (process.platform === "win32") {
+          active.process.kill(signal);
+        } else {
+          // Kill toàn bộ process group (pid âm) trên POSIX
+          try {
+            process.kill(-active.process.pid, signal);
+          } catch (e) {
+            // Fallback nếu không kill được group
+            active.process.kill(signal);
+          }
+        }
+      } else {
+        active.process.kill(signal);
+      }
     } catch (e) {
       console.error(`GeminiProcessManager: error killing process for ${requestId}`, e);
       return false;

@@ -572,9 +572,18 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   font-size: 12px !important;
   background: rgba(0, 0, 0, 0.3) !important;
   border: 1px solid rgba(255, 255, 255, 0.05) !important;
+  color: var(--ink) !important;
 }
 
-.syntax-highlighter code { background: transparent !important; color: inherit !important; padding: 0 !important; font-weight: normal !important; }
+.syntax-highlighter code { 
+  background: transparent !important; 
+  color: var(--ink) !important; 
+  padding: 0 !important; 
+  font-weight: normal !important; 
+  -webkit-background-clip: border-box !important;
+  -webkit-text-fill-color: var(--ink) !important;
+  animation: none !important;
+}
 
 .message-bubble pre { background: transparent; padding: 0; margin: 0; }
 
