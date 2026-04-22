@@ -7,6 +7,7 @@ import { GeminiProcessManager } from "./GeminiProcessManager";
 import { SlashCommandRouter } from "./SlashCommandRouter";
 import { ChatSessionStore } from "../state/ChatSessionStore";
 import {
+  Agent,
   Attachment,
   ChatMessage,
   ChatMode,
@@ -638,20 +639,82 @@ export class GeminiChatController {
     return [...new Set(["auto", ...normalized, "manual"] )];
   }
 
-  private getAvailableAgents(): string[] {
+  private getAvailableAgents(): Agent[] {
     const config = vscode.workspace.getConfiguration("geminiCliChat");
-    const configuredAgents = (config.get<string[]>("availableAgents", []) || [])
-      .map((item) => item.trim())
-      .filter((item) => Boolean(item));
-
-    const fallbackAgents = [
-      "codebase_investigator",
-      "cli_help",
-      "generalist"
+    const configuredAgents = config.get<unknown[]>("availableAgents", []);
+    const fallbackAgents: Agent[] = [
+      {
+        id: "codebase_investigator",
+        label: "Investigator",
+        description: "Codebase analysis specialist"
+      },
+      {
+        id: "cli_help",
+        label: "CLI Helper",
+        description: "Gemini CLI reference and assistant"
+      },
+      {
+        id: "generalist",
+        label: "Generalist",
+        description: "General purpose assistant"
+      }
     ];
 
-    const source = configuredAgents.length > 0 ? configuredAgents : fallbackAgents;
-    return [...new Set(source)];
+    if (!configuredAgents || configuredAgents.length === 0) {
+      return fallbackAgents;
+    }
+
+    const normalized = configuredAgents
+      .map((item) => this.normalizeAgentConfig(item))
+      .filter((item): item is Agent => Boolean(item));
+
+    return normalized.length > 0 ? normalized : fallbackAgents;
+  }
+
+  private normalizeAgentConfig(value: unknown): Agent | null {
+    if (typeof value === "string") {
+      const id = value.trim();
+      if (!id) {
+        return null;
+      }
+
+      const meta = this.getDefaultAgentMeta(id);
+      return {
+        id,
+        label: meta.label,
+        description: meta.description
+      };
+    }
+
+    if (!value || typeof value !== "object") {
+      return null;
+    }
+
+    const candidate = value as Partial<Agent>;
+    const id = typeof candidate.id === "string" ? candidate.id.trim() : "";
+    const label = typeof candidate.label === "string" ? candidate.label.trim() : "";
+    if (!id || !label) {
+      return null;
+    }
+
+    return {
+      id,
+      label,
+      description: typeof candidate.description === "string" && candidate.description.trim() ? candidate.description.trim() : undefined
+    };
+  }
+
+  private getDefaultAgentMeta(id: string): Pick<Agent, "label" | "description"> {
+    switch (id) {
+      case "codebase_investigator":
+        return { label: "Investigator", description: "Phân tích codebase sâu" };
+      case "cli_help":
+        return { label: "CLI Helper", description: "Tra cứu Gemini CLI" };
+      case "generalist":
+        return { label: "Generalist", description: "Tác vụ đa năng" };
+      default:
+        return { label: id, description: "Agent tùy chỉnh" };
+    }
   }
 
   private async searchFiles(query: string): Promise<void> {

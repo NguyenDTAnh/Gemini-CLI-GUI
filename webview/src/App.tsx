@@ -3,6 +3,7 @@ import { Composer } from "./components/Composer";
 import { ChatTimeline } from "./components/ChatTimeline";
 import { SessionSidebar } from "./components/SessionSidebar";
 import {
+  Agent,
   ChatMode,
   ChatSession,
   ExtensionToWebviewMessage,
@@ -12,7 +13,11 @@ import {
 import { vscode } from "./vscode";
 
 const DEFAULT_SLASH_COMMANDS = ["/explain", "/fix", "/summarize", "/tests"];
-const DEFAULT_AGENT_OPTIONS = ["codebase_investigator", "cli_help", "generalist"];
+const DEFAULT_AGENT_OPTIONS: Agent[] = [
+  { id: "codebase_investigator", label: "Investigator", description: "Phân tích codebase sâu" },
+  { id: "cli_help", label: "CLI Helper", description: "Tra cứu Gemini CLI" },
+  { id: "generalist", label: "Generalist", description: "Tác vụ đa năng" }
+];
 const DEFAULT_MODEL_OPTIONS = [
   "auto",
   "gemini-3.1-pro-preview",
@@ -23,6 +28,54 @@ const DEFAULT_MODEL_OPTIONS = [
   "gemini-2.5-flash-lite",
   "manual"
 ];
+
+function getDefaultAgentMeta(id: string): Agent {
+  switch (id) {
+    case "codebase_investigator":
+      return { id, label: "Investigator", description: "Phân tích codebase sâu" };
+    case "cli_help":
+      return { id, label: "CLI Helper", description: "Tra cứu Gemini CLI" };
+    case "generalist":
+      return { id, label: "Generalist", description: "Tác vụ đa năng" };
+    default:
+      return { id, label: id || "Agent", description: "Agent tùy chỉnh" };
+  }
+}
+
+function normalizeAgents(value: unknown, fallback: Agent[]): Agent[] {
+  if (!Array.isArray(value)) {
+    return fallback;
+  }
+
+  const normalized = value
+    .map((item) => {
+      if (typeof item === "string") {
+        const id = item.trim();
+        return id ? getDefaultAgentMeta(id) : null;
+      }
+
+      if (!item || typeof item !== "object") {
+        return null;
+      }
+
+      const candidate = item as Partial<Agent>;
+      const id = typeof candidate.id === "string" ? candidate.id.trim() : "";
+      const label = typeof candidate.label === "string" ? candidate.label.trim() : "";
+
+      if (!id || !label) {
+        return null;
+      }
+
+      return {
+        id,
+        label,
+        description: typeof candidate.description === "string" && candidate.description.trim() ? candidate.description.trim() : undefined
+      } satisfies Agent;
+    })
+    .filter((item): item is Agent => Boolean(item));
+
+  return normalized.length > 0 ? normalized : fallback;
+}
 
 function upsertSession(sessions: ChatSession[], nextSession: ChatSession): ChatSession[] {
   const existingIndex = sessions.findIndex((item) => item.id === nextSession.id);
@@ -46,7 +99,7 @@ export default function App() {
   const [debugMode, setDebugMode] = useState<boolean>(Boolean(persistedState?.debugMode));
   const [running, setRunning] = useState(false);
   const [banner, setBanner] = useState<{ kind: "info" | "error"; text: string } | null>(null);
-  const [availableAgents, setAvailableAgents] = useState<string[]>(DEFAULT_AGENT_OPTIONS);
+  const [availableAgents, setAvailableAgents] = useState<Agent[]>(DEFAULT_AGENT_OPTIONS);
   const [availableModels, setAvailableModels] = useState<string[]>(DEFAULT_MODEL_OPTIONS);
   const [slashCommands, setSlashCommands] = useState<string[]>(DEFAULT_SLASH_COMMANDS);
   const [commandDescriptors, setCommandDescriptors] = useState<SlashCommandDescriptor[]>([]);
@@ -92,7 +145,7 @@ export default function App() {
         case "bootstrapped": {
           setSessions(message.payload.sessions);
           setActiveSessionId(message.payload.activeSessionId);
-          setAvailableAgents(message.payload.availableAgents?.length ? message.payload.availableAgents : DEFAULT_AGENT_OPTIONS);
+          setAvailableAgents(normalizeAgents(message.payload.availableAgents, DEFAULT_AGENT_OPTIONS));
           setAvailableModels(message.payload.availableModels?.length ? message.payload.availableModels : DEFAULT_MODEL_OPTIONS);
           setSlashCommands(message.payload.supportedCommands?.length ? message.payload.supportedCommands : DEFAULT_SLASH_COMMANDS);
           setCommandDescriptors(message.payload.commandDescriptors || []);
@@ -240,9 +293,9 @@ export default function App() {
     }
 
     const currentAgentId = (activeSession.defaultAgentId || "").trim();
-    const currentIndex = availableAgents.findIndex((item) => item === currentAgentId);
+    const currentIndex = availableAgents.findIndex((item) => item.id === currentAgentId);
     const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % availableAgents.length;
-    const nextAgentId = availableAgents[nextIndex];
+    const nextAgentId = availableAgents[nextIndex].id;
 
     postMessage({
       type: "setAgent",
@@ -309,12 +362,16 @@ export default function App() {
 
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    
-    el.style.setProperty("--mouse-x", `${x + (x > rect.width / 2 ? 100 : -100)}px`);
-    el.style.setProperty("--mouse-y", `${y + (y > rect.height / 2 ? 100 : -100)}px`);
+
+    const dx = x - rect.width / 2;
+    const dy = y - rect.height / 2;
+    const distance = Math.sqrt(dx * dx + dy * dy) || 1;
+    const moveDistance = 500;
+
+    el.style.setProperty("--mouse-x", `${x + (dx / distance) * moveDistance}px`);
+    el.style.setProperty("--mouse-y", `${y + (dy / distance) * moveDistance}px`);
     el.style.setProperty("--orb-opacity", "0");
   };
-
   return (
     <div className="app-shell" onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave}>
       <svg style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden' }} aria-hidden="true">

@@ -42,6 +42,13 @@ export interface SlashCommandDescriptor {
   requiresAttachment?: boolean;
 }
 
+export interface Agent {
+  id: string;
+  label: string;
+  icon?: string;
+  description?: string;
+}
+
 export interface ChatMessage {
   id: string;
   role: MessageRole;
@@ -72,7 +79,7 @@ export interface BootstrapPayload {
   activeSessionId: string;
   supportedCommands?: string[];
   commandDescriptors?: SlashCommandDescriptor[];
-  availableAgents?: string[];
+  availableAgents?: Agent[];
   availableModels?: string[];
 }
 

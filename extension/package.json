@@ -99,14 +99,44 @@
         "geminiCliChat.availableAgents": {
           "type": "array",
           "items": {
-            "type": "string"
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Unique identifier for the agent."
+              },
+              "label": {
+                "type": "string",
+                "description": "Display name of the agent."
+              },
+              "description": {
+                "type": "string",
+                "description": "Short description of the agent's purpose."
+              }
+            },
+            "required": [
+              "id",
+              "label"
+            ]
           },
           "default": [
-            "codebase_investigator",
-            "cli_help",
-            "generalist"
+            {
+              "id": "codebase_investigator",
+              "label": "Investigator",
+              "description": "Phân tích codebase sâu"
+            },
+            {
+              "id": "cli_help",
+              "label": "CLI Helper",
+              "description": "Tra cứu Gemini CLI"
+            },
+            {
+              "id": "generalist",
+              "label": "Generalist",
+              "description": "Tác vụ đa năng"
+            }
           ],
-          "description": "Agent list shown in chat UI selector. Values are sent to Gemini CLI as /<agent-id>."
+          "description": "Agent list shown in chat UI selector."
         },
         "geminiCliChat.customSlashCommands": {
           "type": "object",

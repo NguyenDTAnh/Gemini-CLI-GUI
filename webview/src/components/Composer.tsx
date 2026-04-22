@@ -1,6 +1,6 @@
 import * as React from "react";
 import { FileCode, FileSearch, FileText, Image as ImageIcon, Paperclip, SendHorizonal, Sparkles, Terminal, X } from "lucide-react";
-import { Attachment, ChatMode, DroppedFilePayload, SlashCommandDescriptor } from "../types";
+import { Agent, Attachment, ChatMode, DroppedFilePayload, SlashCommandDescriptor } from "../types";
 import { AgentSelector } from "./AgentSelector";
 import { ModelSelector } from "./ModelSelector";
 import { ContentEditableInput, SuggestionItem } from "./ContentEditableInput";
@@ -37,7 +37,7 @@ interface ComposerProps {
   modelLabel: string;
   modelOptions: string[];
   agentId: string;
-  agentOptions: string[];
+  agentOptions: Agent[];
   slashCommands: string[];
   commandDescriptors?: SlashCommandDescriptor[];
   mentionCandidates: { name: string; fsPath: string }[];
@@ -288,6 +288,17 @@ export function Composer({
   prefill
 }: ComposerProps) {
   const [dragging, setDragging] = React.useState(false);
+  const [activeDropdown, setActiveDropdown] = React.useState<"agent" | "model" | null>(null);
+
+  React.useEffect(() => {
+    const handleClickOutside = () => setActiveDropdown(null);
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
+  }, []);
+
+  const toggleDropdown = (name: "agent" | "model") => {
+    setActiveDropdown((prev) => (prev === name ? null : name));
+  };
 
   const resolvedModelOptions = React.useMemo(() => {
     const list = [...modelOptions, modelId].filter((item) => Boolean(item.trim()));
@@ -301,8 +312,7 @@ export function Composer({
   }, [resolvedModelOptions]);
 
   const resolvedAgentOptions = React.useMemo(() => {
-    const list = [...agentOptions, agentId].filter((item) => Boolean(item.trim()));
-    return [...new Set(list)];
+    return agentOptions.filter((item): item is Agent => Boolean(item?.id && item?.label));
   }, [agentOptions, agentId]);
 
   const slashMentionData = React.useMemo(() => {
@@ -475,12 +485,16 @@ export function Composer({
             agentId={agentId}
             agentOptions={resolvedAgentOptions}
             onSelect={onSetAgent}
+            isOpen={activeDropdown === "agent"}
+            onToggle={() => toggleDropdown("agent")}
           />
 
           <ModelSelector
             modelId={modelId}
             modelOptions={sortedOptions}
             onSelect={onSetModel}
+            isOpen={activeDropdown === "model"}
+            onToggle={() => toggleDropdown("model")}
           />
         </div>
 

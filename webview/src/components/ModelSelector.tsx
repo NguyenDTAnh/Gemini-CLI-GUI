@@ -6,22 +6,11 @@ interface ModelSelectorProps {
   modelId: string;
   modelOptions: string[];
   onSelect: (modelId: string) => void;
+  isOpen: boolean;
+  onToggle: () => void;
 }
 
-export function ModelSelector({ modelId, modelOptions, onSelect }: ModelSelectorProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener("click", handleClickOutside);
-    return () => document.removeEventListener("click", handleClickOutside);
-  }, []);
-
+export function ModelSelector({ modelId, modelOptions, onSelect, isOpen, onToggle }: ModelSelectorProps) {
   const getModelLabel = (id: string) => {
     if (id === "auto") return "Auto (Default)";
     if (id === "gemini-3.1-pro-preview") return "Gemini 3.1 Pro";
@@ -37,18 +26,12 @@ export function ModelSelector({ modelId, modelOptions, onSelect }: ModelSelector
 
   const currentLabel = modelId === "manual" ? "Select Model ID" : getModelLabel(modelId);
 
-  const toggleDropdown = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsOpen(!isOpen);
-  };
-
   return (
-    <div className="model-selector-container" ref={dropdownRef}>
+    <div className="model-selector-container">
       <button 
         type="button"
         className={`model-selector-trigger ${isOpen ? 'active' : ''}`}
-        onClick={toggleDropdown}
+        onClick={(e) => { e.stopPropagation(); onToggle(); }}
         title={`Current model: ${getModelLabel(modelId)}`}
       >
         <span className="current-model-name">{currentLabel}</span>
@@ -65,7 +48,7 @@ export function ModelSelector({ modelId, modelOptions, onSelect }: ModelSelector
                 className={`model-item ${option === modelId ? "selected" : ""}`}
                 onClick={() => {
                   onSelect(option);
-                  setIsOpen(false);
+                  onToggle();
                 }}
               >
                 <div className="model-item-info">

@@ -688,11 +688,20 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  width: 24px;
+  gap: 6px;
+  padding: 0 4px;
   height: 24px;
   border-radius: 6px;
   background: transparent;
+}
+
+.agent-trigger-label {
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .agent-selector-trigger:hover {
@@ -742,6 +751,21 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   animation: dropdown-up 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+.agent-dropdown {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  left: 0;
+  width: max-content;
+  max-width: 240px;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.7);
+  overflow: hidden;
+  z-index: 9999 !important;
+  animation: dropdown-up 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
 @keyframes dropdown-up {
   from { opacity: 0; transform: translateY(10px) scale(0.98); }
   to { opacity: 1; transform: translateY(0) scale(1); }
@@ -751,6 +775,11 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   max-height: 250px;
   overflow-y: auto;
   padding: 4px;
+}
+
+.agent-dropdown .dropdown-scroll-list {
+  width: max-content;
+  max-width: 240px;
 }
 
 .item-hover-effect:hover, 
@@ -773,6 +802,11 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   box-sizing: border-box !important;
 }
 
+.agent-dropdown .model-item {
+  width: 100% !important;
+  max-width: 240px !important;
+}
+
 .model-item-name {
   font-size: 11px;
   background: var(--gradient-primary) !important;
@@ -783,6 +817,21 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   animation: orb-bg-pan 4s infinite linear !important;
   font-weight: 500;
   transition: all 0.15s;
+}
+
+.agent-dropdown .model-item-name {
+  display: block;
+  font-weight: 700;
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: normal;
+  line-height: 1.2;
+  max-width: 100%;
+}
+
+.agent-dropdown .model-item-info {
+  display: block;
+  width: 100%;
 }
 
 .model-item.selected .model-item-name {

@@ -11,7 +11,7 @@ export const GeminiLogo: React.FC<GeminiLogoProps> = ({
   className = "", 
   useGradient = true 
 }) => {
-  const gradientId = useGradient ? "url(#primary-gradient)" : "currentColor";
+  const gradientId = "currentColor";
   
   return (
     <svg 
