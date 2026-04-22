@@ -55,6 +55,7 @@ interface ComposerProps {
     nonce: number;
     text: string;
     append: boolean;
+    contextChip?: { display: string; content: string; languageId: string };
   } | null;
 }
 
@@ -461,7 +462,7 @@ export function Composer({
           onSubmit={submit}
           renderSlashSuggestion={renderSlashSuggestion}
           renderFileSuggestion={renderFileSuggestion}
-          prefill={prefill?.text}
+          prefill={prefill || undefined}
         />
       </div>
 

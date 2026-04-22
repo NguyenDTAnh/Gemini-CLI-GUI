@@ -108,7 +108,8 @@ export default function App() {
   const [composerPrefill, setComposerPrefill] = useState<{
     nonce: number;
     text: string;
-    append: boolean;
+    append?: boolean;
+    contextChip?: { display: string; content: string; languageId: string };
   } | null>(null);
 
   const activeSession = useMemo(
@@ -225,16 +226,12 @@ export default function App() {
           return;
         }
         case "composerPrefill": {
-          const text = message.text.trim();
-          if (!text) {
-            return;
-          }
-
           setActiveSessionId(message.sessionId);
           setComposerPrefill((prev) => ({
             nonce: (prev?.nonce ?? 0) + 1,
-            text,
-            append: message.append ?? true
+            text: message.text || "",
+            append: message.append ?? true,
+            contextChip: message.contextChip
           }));
           return;
         }

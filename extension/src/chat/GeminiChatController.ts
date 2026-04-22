@@ -121,18 +121,17 @@ export class GeminiChatController {
     const startLine = editor.selection.start.line + 1;
     const endLine = editor.selection.end.line + 1;
     const targetPath = vscode.workspace.asRelativePath(editor.document.uri, false);
-    const payload = [
-      `## Selected context: ${targetPath}:${startLine}-${endLine}`,
-      `\`\`\`${editor.document.languageId}`,
-      raw,
-      "```"
-    ].join("\n");
 
     this.post({
       type: "composerPrefill",
       sessionId: session.id,
-      text: payload,
-      append: true
+      text: "",
+      append: true,
+      contextChip: {
+        display: `${targetPath}:${startLine}-${endLine}`,
+        content: raw,
+        languageId: editor.document.languageId
+      }
     });
   }
 

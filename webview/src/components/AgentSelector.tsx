@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { Agent } from "../types";
 
 interface AgentSelectorProps {
@@ -24,6 +25,7 @@ export function AgentSelector({ agentId, agentOptions, onSelect, isOpen, onToggl
         disabled={disabled}
       >
         <span className="agent-trigger-label">{resolvedAgent?.label || "Select Agent"}</span>
+        <ChevronDown size={14} className={`chevron ${isOpen ? 'open' : ''}`} />
       </button>
 
       {isOpen && (

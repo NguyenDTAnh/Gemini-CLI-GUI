@@ -14,7 +14,12 @@ interface ContentEditableInputProps {
   onSubmit: (text: string) => void;
   renderSlashSuggestion: (item: SuggestionItem, focused: boolean) => React.ReactNode;
   renderFileSuggestion: (item: SuggestionItem, focused: boolean) => React.ReactNode;
-  prefill?: string;
+  prefill?: {
+    nonce: number;
+    text: string;
+    append: boolean;
+    contextChip?: { display: string; content: string; languageId: string };
+  };
 }
 
 export function ContentEditableInput({
@@ -87,10 +92,15 @@ export function ContentEditableInput({
           const type = el.dataset.type;
           const id = el.dataset.id;
           const display = el.dataset.display;
+          const content = el.dataset.content;
+          const language = el.dataset.language;
+
           if (type === 'mention') {
             text += `@[${display}](${id})`;
           } else if (type === 'slash') {
             text += `/${id}`;
+          } else if (type === 'snippet') {
+            text += `\n\n## Selected context: ${display}\n\`\`\`${language}\n${content}\n\`\`\`\n\n`;
           }
         } else if (el.tagName === 'BR') {
           text += '\n';
@@ -237,11 +247,36 @@ export function ContentEditableInput({
 
   useEffect(() => {
     if (prefill && editorRef.current) {
-      const currentRaw = getRawText();
-      if (!currentRaw) {
-        editorRef.current.innerHTML = prefill.replace(/\n/g, '<br>');
-      } else {
-        editorRef.current.innerHTML += '<br><br>' + prefill.replace(/\n/g, '<br>');
+      const { text, contextChip } = prefill;
+      
+      if (text) {
+        const currentRaw = getRawText();
+        if (!currentRaw) {
+          editorRef.current.innerHTML = text.replace(/\n/g, '<br>');
+        } else {
+          editorRef.current.innerHTML += '<br><br>' + text.replace(/\n/g, '<br>');
+        }
+      }
+
+      if (contextChip) {
+        const chip = document.createElement('span');
+        chip.contentEditable = 'false';
+        chip.className = 'mention-chip snippet-chip';
+        chip.dataset.type = 'snippet';
+        chip.dataset.display = contextChip.display;
+        chip.dataset.content = contextChip.content;
+        chip.dataset.language = contextChip.languageId;
+        chip.textContent = contextChip.display;
+        
+        const space = document.createTextNode('\u00A0');
+        
+        // If there's content already, add a break before if it doesn't end with one
+        if (editorRef.current.innerHTML && !editorRef.current.innerHTML.endsWith('<br>')) {
+          editorRef.current.appendChild(document.createElement('br'));
+        }
+        
+        editorRef.current.appendChild(chip);
+        editorRef.current.appendChild(space);
       }
       
       const sel = window.getSelection();

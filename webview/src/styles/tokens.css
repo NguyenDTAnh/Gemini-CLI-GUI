@@ -672,7 +672,7 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 2px;
   padding: 2px 8px;
   border-radius: 4px;
   background: transparent;
@@ -688,7 +688,7 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 2px;
   padding: 0 4px;
   height: 24px;
   border-radius: 6px;
@@ -1134,21 +1134,35 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
 
 /* Atomic Inline Chip Styles */
 .mention-chip {
-  background: var(--gradient-primary) !important;
+  background: none !important;
+  background-image: var(--gradient-primary) !important;
   background-size: 200% 200% !important;
   -webkit-background-clip: text !important;
+  background-clip: text !important;
   -webkit-text-fill-color: transparent !important;
   color: transparent !important;
-  border: none !important;
   animation: orb-bg-pan 4s infinite linear !important;
   font-weight: 600;
-  border-radius: 999px;
+  border-radius: 4px;
+  border: none !important;
   padding: 0;
   margin: 0 2px;
   display: inline-block;
   user-select: all;
   vertical-align: baseline;
   cursor: default;
+  transition: all 0.2s ease;
+}
+
+.mention-chip:hover {
+  background-color: rgba(168, 199, 250, 0.05) !important;
+}
+
+.mention-chip.snippet-chip {
+  background-image: linear-gradient(90deg, #c58af9, #8ab4f8, #c58af9) !important;
+  animation: orb-bg-pan 3s infinite linear !important;
+  font-size: 0.95em;
+  opacity: 0.9;
 }
 
 /* Đây là phần quan trọng: Popup gợi ý */
