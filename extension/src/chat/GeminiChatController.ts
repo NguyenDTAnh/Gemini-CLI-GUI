@@ -385,6 +385,18 @@ export class GeminiChatController {
 
     const session = await this.ensureActiveSession();
     await this.attachToSession(session, attachments);
+
+    this.post({
+      type: "composerPrefill",
+      sessionId: session.id,
+      text: "",
+      append: true,
+      contextChips: attachments.map((item) => ({
+        display: item.name,
+        type: "mention",
+        id: item.fsPath
+      }))
+    });
   }
 
   private async setModel(sessionId: string, modelId: string): Promise<void> {
@@ -477,16 +489,6 @@ export class GeminiChatController {
     }
 
     await this.attachToSession(session, additions);
-
-    const mentionTokens = additions.map((item) => `@${item.name}`).join(" ");
-    if (mentionTokens) {
-      this.post({
-        type: "composerPrefill",
-        sessionId: session.id,
-        text: mentionTokens,
-        append: true
-      });
-    }
   }
 
   private async insertSelectedContext(

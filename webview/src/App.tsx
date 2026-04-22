@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Sparkles } from "lucide-react";
 import { Composer } from "./components/Composer";
 import { ChatTimeline } from "./components/ChatTimeline";
 import { SessionSidebar } from "./components/SessionSidebar";
@@ -10,6 +11,7 @@ import {
   SlashCommandDescriptor,
   WebviewToExtensionMessage
 } from "./types";
+import { collectDroppedFiles, parseDroppedPathPayloads, toDroppedPayload } from "./dragDropUtils";
 import { vscode } from "./vscode";
 
 const DEFAULT_SLASH_COMMANDS = ["/explain", "/fix", "/summarize", "/tests"];
@@ -110,12 +112,87 @@ export default function App() {
     text: string;
     append?: boolean;
     contextChip?: { display: string; content: string; languageId: string };
+    contextChips?: Array<{ display: string; content?: string; languageId?: string; type: 'mention' | 'snippet'; id?: string }>;
   } | null>(null);
 
   const activeSession = useMemo(
     () => sessions.find((session) => session.id === activeSessionId) || sessions[0],
     [sessions, activeSessionId]
   );
+
+  const [globalDragging, setGlobalDragging] = useState(false);
+  const dragCounter = useRef(0);
+
+  const handleGlobalDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current++;
+    if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+      setGlobalDragging(true);
+    }
+  };
+
+  const handleGlobalDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter.current--;
+    if (dragCounter.current === 0) {
+      setGlobalDragging(false);
+    }
+  };
+
+  const handleGlobalDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = "copy";
+  };
+
+  const handleGlobalDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setGlobalDragging(false);
+    dragCounter.current = 0;
+
+    if (!activeSession?.id) return;
+
+    const files = await collectDroppedFiles(e.dataTransfer);
+    const filePayloads = files.length > 0
+      ? await Promise.all(files.map((file) => toDroppedPayload(file)))
+      : [];
+    const uriPayloads = parseDroppedPathPayloads(e.dataTransfer);
+    const payloads = [...filePayloads, ...uriPayloads];
+
+    if (payloads.length === 0) return;
+
+    const dedupedPayloads: DroppedFilePayload[] = [];
+    const seenPaths = new Set<string>();
+
+    for (const p of payloads) {
+      const key = p.fsPath || p.uri || p.name;
+      if (!seenPaths.has(key)) {
+        seenPaths.add(key);
+        dedupedPayloads.push(p);
+      }
+    }
+
+    postMessage({
+      type: "attachFiles",
+      sessionId: activeSession.id,
+      files: dedupedPayloads
+    });
+
+    // Also insert them as "pretty" chips into the composer
+    setComposerPrefill((prev) => ({
+      nonce: (prev?.nonce ?? 0) + 1,
+      text: "",
+      append: true,
+      contextChips: dedupedPayloads.map(p => ({
+        display: p.name,
+        type: 'mention',
+        id: p.fsPath || p.uri || p.name
+      }))
+    }));
+  };
 
   const mentionCandidates = useMemo(() => {
     const attached = (activeSession?.attachments || []).map((attachment) => ({
@@ -370,7 +447,23 @@ export default function App() {
     el.style.setProperty("--orb-opacity", "0");
   };
   return (
-    <div className="app-shell" onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave}>
+    <div 
+      className={`app-shell ${globalDragging ? "dragging" : ""}`} 
+      onMouseMove={handleMouseMove} 
+      onMouseLeave={handleMouseLeave}
+      onDragEnter={handleGlobalDragEnter}
+      onDragLeave={handleGlobalDragLeave}
+      onDragOver={handleGlobalDragOver}
+      onDrop={handleGlobalDrop}
+    >
+      {globalDragging && (
+        <div className="global-drop-overlay">
+          <div className="drop-overlay-content">
+            <Sparkles size={48} stroke="url(#primary-gradient)" />
+            <div className="drop-overlay-text">Drop anywhere to attach context</div>
+          </div>
+        </div>
+      )}
       <svg style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden' }} aria-hidden="true">
         <defs>
           <linearGradient id="primary-gradient" x1="0%" y1="0%" x2="100%" y2="0%">

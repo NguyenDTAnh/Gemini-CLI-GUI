@@ -1,9 +1,13 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 
 export interface SuggestionItem {
   id: string;
   display: string;
   fsPath?: string;
+}
+
+export interface ContentEditableInputHandle {
+  removeChip: (id: string) => void;
 }
 
 interface ContentEditableInputProps {
@@ -12,6 +16,7 @@ interface ContentEditableInputProps {
   mentionCandidates: SuggestionItem[];
   onSearchFiles: (query: string) => void;
   onSubmit: (text: string) => void;
+  onChipDeleted?: (id: string) => void;
   renderSlashSuggestion: (item: SuggestionItem, focused: boolean) => React.ReactNode;
   renderFileSuggestion: (item: SuggestionItem, focused: boolean) => React.ReactNode;
   prefill?: {
@@ -19,21 +24,60 @@ interface ContentEditableInputProps {
     text: string;
     append: boolean;
     contextChip?: { display: string; content: string; languageId: string };
+    contextChips?: Array<{ display: string; content?: string; languageId?: string; type: 'mention' | 'snippet'; id?: string }>;
   };
 }
 
-export function ContentEditableInput({
+export const ContentEditableInput = forwardRef<ContentEditableInputHandle, ContentEditableInputProps>(({
   placeholder,
   slashCommands,
   mentionCandidates,
   onSearchFiles,
   onSubmit,
+  onChipDeleted,
   renderSlashSuggestion,
   renderFileSuggestion,
   prefill
-}: ContentEditableInputProps) {
+}, ref) => {
   const editorRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
+  const currentChipIdsRef = useRef<Set<string>>(new Set());
+
+  useImperativeHandle(ref, () => ({
+    removeChip: (idOrPath: string) => {
+      if (!editorRef.current || !idOrPath) return;
+      
+      const allChips = editorRef.current.querySelectorAll('.mention-chip');
+      let removedCount = 0;
+
+      allChips.forEach(chip => {
+        const el = chip as HTMLElement;
+        const chipId = el.dataset.id;
+        const chipDisplay = el.dataset.display;
+
+        if (chipId === idOrPath || chipDisplay === idOrPath) {
+          // Try to find and remove the trailing non-breaking space
+          const next = chip.nextSibling;
+          if (next && next.nodeType === Node.TEXT_NODE && (next.textContent === '\u00A0' || next.textContent === ' ')) {
+            next.parentNode?.removeChild(next);
+          }
+          chip.parentNode?.removeChild(chip);
+          removedCount++;
+        }
+      });
+
+      if (removedCount > 0) {
+        // Update the tracking set immediately
+        const remainingChips = editorRef.current.querySelectorAll('.mention-chip');
+        const nextIds = new Set<string>();
+        remainingChips.forEach(c => {
+          const cid = (c as HTMLElement).dataset.id;
+          if (cid) nextIds.add(cid);
+        });
+        currentChipIdsRef.current = nextIds;
+      }
+    }
+  }));
   
   const [suggestionState, setSuggestionState] = useState<{
     active: boolean;
@@ -124,6 +168,23 @@ export function ContentEditableInput({
       editorRef.current.innerHTML = '';
     }
 
+    // --- NEW: Detection of deleted chips ---
+    const allChips = editorRef.current.querySelectorAll('.mention-chip');
+    const newChipIds = new Set<string>();
+    allChips.forEach(c => {
+      const id = (c as HTMLElement).dataset.id;
+      if (id) newChipIds.add(id);
+    });
+
+    // Find what's missing
+    currentChipIdsRef.current.forEach(oldId => {
+      if (!newChipIds.has(oldId)) {
+        onChipDeleted?.(oldId);
+      }
+    });
+    currentChipIdsRef.current = newChipIds;
+    // --- END detection ---
+
     const sel = window.getSelection();
     if (!sel || sel.rangeCount === 0) return;
     
@@ -198,6 +259,7 @@ export function ContentEditableInput({
       if (afterText) {
         parent.insertBefore(afterNode, nextSibling);
       }
+      if (item.id) currentChipIdsRef.current.add(item.id);
     }
     
     const newRange = document.createRange();
@@ -247,7 +309,7 @@ export function ContentEditableInput({
 
   useEffect(() => {
     if (prefill && editorRef.current) {
-      const { text, contextChip } = prefill;
+      const { text, contextChip, contextChips } = prefill;
       
       if (text) {
         const currentRaw = getRawText();
@@ -258,25 +320,44 @@ export function ContentEditableInput({
         }
       }
 
-      if (contextChip) {
+      const chipsToInsert = contextChips || (contextChip ? [{ 
+        display: contextChip.display, 
+        content: contextChip.content, 
+        languageId: contextChip.languageId, 
+        type: 'snippet' as const 
+      }] : []);
+
+      for (const chipData of chipsToInsert) {
         const chip = document.createElement('span');
         chip.contentEditable = 'false';
-        chip.className = 'mention-chip snippet-chip';
-        chip.dataset.type = 'snippet';
-        chip.dataset.display = contextChip.display;
-        chip.dataset.content = contextChip.content;
-        chip.dataset.language = contextChip.languageId;
-        chip.textContent = contextChip.display;
+        
+        if (chipData.type === 'snippet') {
+          chip.className = 'mention-chip snippet-chip';
+          chip.dataset.type = 'snippet';
+          chip.dataset.display = chipData.display;
+          chip.dataset.content = chipData.content || "";
+          chip.dataset.language = chipData.languageId || "";
+          chip.textContent = chipData.display;
+        } else {
+          chip.className = 'mention-chip';
+          chip.dataset.type = 'mention';
+          chip.dataset.id = chipData.id || chipData.display;
+          chip.dataset.display = chipData.display;
+          chip.textContent = `@${chipData.display}`;
+        }
         
         const space = document.createTextNode('\u00A0');
         
         // If there's content already, add a break before if it doesn't end with one
-        if (editorRef.current.innerHTML && !editorRef.current.innerHTML.endsWith('<br>')) {
+        if (editorRef.current.innerHTML && !editorRef.current.innerHTML.endsWith('<br>') && !editorRef.current.innerHTML.endsWith('\u00A0')) {
           editorRef.current.appendChild(document.createElement('br'));
         }
         
         editorRef.current.appendChild(chip);
         editorRef.current.appendChild(space);
+        if (chipData.id || chipData.display) {
+          currentChipIdsRef.current.add(chipData.id || chipData.display);
+        }
       }
       
       const sel = window.getSelection();
@@ -323,4 +404,4 @@ export function ContentEditableInput({
         </div>
       )}    </div>
   );
-}
+});
