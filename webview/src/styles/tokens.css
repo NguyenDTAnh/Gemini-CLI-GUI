@@ -1288,8 +1288,16 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   border: none;
   box-shadow: none;
 }
+
 .progress-icon {
+  color: var(--brand);
   display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.progress-text {
   align-items: center;
   justify-content: center;
   background: var(--gradient-primary) !important;
@@ -1358,24 +1366,96 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
 .permission-request-container {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: 12px;
-  background: var(--bg-1);
-  border: 1px solid var(--line);
+  align-items: stretch;
+  gap: 0 !important;
+  padding: 8px;
+  background: rgba(168, 199, 250, 0.05);
+  border: 1px solid rgba(168, 199, 250, 0.15);
   border-radius: 12px;
   width: 100%;
+  margin: 8px 0;
+}
+
+.permission-request-container.responded {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 2px 0 !important;
+  flex-direction: row;
 }
 
 .permission-message {
   margin: 0;
   color: var(--ink);
-  font-size: 13px;
+  font-size: 11px;
+  font-weight: 500;
   line-height: 1.4;
+  flex: 1;
+}
+
+.permission-confirmed {
+  background: none !important;
+  color: var(--muted) !important;
+  font-size: 11px !important;
+  padding: 4px 0 4px 4px !important;
+  margin: 6px 0 !important;
+  border: none !important;
+  word-break: break-all;
+  font-family: var(--font-mono);
+  display: block;
+  line-height: 1.4;
+  opacity: 0.8;
+}
+
+.permission-confirmed .bullet {
+  font-size: 6px !important;
+  vertical-align: middle;
+  margin-right: 4px;
+  display: inline-block;
+  transform: translateY(-1px);
+}
+
+.command-request {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.command-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.command-icon {
+  color: var(--brand);
+}
+
+.command-code {
+  font-family: 'SF Mono', Monaco, Consolas, monospace;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  color: var(--brand);
+  font-size: 11px;
+  word-break: break-all;
+  white-space: pre-wrap;
 }
 
 .permission-actions {
   display: flex;
   gap: 8px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  border-top: 1px solid rgba(168, 199, 250, 0.1);
+  padding-top: 10px;
 }
 
 .permission-btn {
@@ -1383,26 +1463,156 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
+  gap: 4px;
+  padding: 4px 10px;
   border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
-  transition: all 0.2s;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  background: transparent;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .permission-btn.primary {
-  background: var(--gradient-primary);
-  color: var(--bg-0);
+  color: var(--ink) !important;
+  border: 1px solid transparent;
+  background-image: linear-gradient(var(--bg-0), var(--bg-0)), var(--gradient-primary);
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+  background-size: 100% 100%, 200% 200%;
+  animation: orb-bg-pan 4s infinite linear;
 }
 
 .permission-btn.secondary {
-  background: var(--bg-2);
-  color: var(--ink);
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .permission-btn:hover {
+  transform: translateY(-1.5px);
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.permission-btn.primary:hover {
   filter: brightness(1.2);
 }
 
 
+
+
+/* --- Agent Thinking & Tool Call Styles --- */
+.thought-block {
+  margin: 4px 0 8px 0;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  width: 100%;
+}
+
+.thought-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  font-size: 11px;
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none;
+  background: transparent;
+  transition: all 0.2s ease;
+}
+
+.thought-header:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--ink);
+}
+
+.thought-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--gradient-primary);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: orb-bg-pan 4s infinite linear;
+  filter: drop-shadow(0 0 8px rgba(168, 199, 250, 0.3));
+}
+
+.thought-header-text {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  opacity: 0.8;
+}
+
+.thought-chevron {
+  margin-left: auto;
+  opacity: 0.4;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.thought-block.expanded .thought-chevron {
+  transform: rotate(0deg);
+  opacity: 0.8;
+}
+
+.thought-content-wrapper {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.thought-block.expanded .thought-content-wrapper {
+  grid-template-rows: 1fr;
+}
+
+.thought-content {
+  overflow: hidden;
+  min-height: 0;
+  padding: 0 14px;
+  font-size: 11px;
+  color: var(--muted);
+  white-space: pre-wrap;
+  line-height: 1.6;
+  opacity: 0;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  border-top: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.thought-block.expanded .thought-content {
+  padding: 12px 14px;
+  opacity: 0.7;
+}
+
+/* Restore and refine progress/shiny text styles */
+.progress-status.completed .progress-text {
+  background: none !important;
+  -webkit-text-fill-color: var(--muted) !important;
+  color: var(--muted) !important;
+  animation: none !important;
+}
+
+.progress-status.completed .spin-icon {
+  animation: none !important;
+  opacity: 0.5;
+}
+
+.message-bubble.assistant.thought, 
+.message-bubble.assistant.call { 
+  padding: 0; 
+  background: transparent; 
+  box-shadow: none; 
+  border: none; 
+  backdrop-filter: none; 
+  width: 100%;
+}

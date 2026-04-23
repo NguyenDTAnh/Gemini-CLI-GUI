@@ -136,7 +136,7 @@ export class GeminiChatController {
     });
   }
 
-  private async handleMessage(message: WebviewToExtensionMessage): Promise<void> {
+  private async handleMessage(message: any): Promise<void> {
     switch (message.type) {
       case "ready":
         await this.pushBootstrap();
@@ -204,8 +204,36 @@ export class GeminiChatController {
     if (this.acpClient && (this.acpClient as any).pendingPermissions) {
       const resolve = (this.acpClient as any).pendingPermissions.get(requestId);
       if (resolve) {
-        // Cần map giá trị trả về từ webview khớp với format ACP
-        // Giả định value = option name (tên nút)
+        console.log(`[Controller] Resolving permission ${requestId} with value ${value}`);
+        
+        // Tìm và cập nhật message trong mọi session (đảm bảo an toàn)
+        const sessions = this.store.getSessions();
+        for (const session of sessions) {
+          const message = session.messages.find(m => m.content.includes(requestId));
+          if (message) {
+            // Cố gắng tìm label tương ứng với value (id) để hiển thị đẹp hơn
+            let displayValue = value;
+            try {
+              const jsonMatch = message.content.match(/<permission_request>(.*?)<\/permission_request>/s);
+              if (jsonMatch) {
+                const data = JSON.parse(jsonMatch[1]);
+                const option = data.options?.find((o: any) => o.value === value);
+                if (option) displayValue = option.label;
+              }
+            } catch (e) {
+              console.error("[Controller] Failed to extract label for display", e);
+            }
+
+            // Xóa tag JSON và thay bằng div với class để style, thêm bullet point (với span riêng) và tiền tố
+            const regex = new RegExp(`<permission_request>.*?${requestId}.*?</permission_request>`, 'gs');
+            message.content = message.content.replace(regex, `<div class="permission-confirmed"><span class="bullet">●</span> Bạn đã chọn: ${displayValue}</div>`);
+            
+            void this.store.upsertSession(session);
+            this.post({ type: "sessionUpdated", session });
+            break;
+          }
+        }
+
         resolve({ outcome: { outcome: "selected", optionId: value } });
         (this.acpClient as any).pendingPermissions.delete(requestId);
       }
@@ -346,7 +374,8 @@ export class GeminiChatController {
       transformedPrompt
     ].filter(Boolean).join("\n");
 
-    const acpSessionId = await this.acpClient.newSession(modelName);
+    const mcpServers = config.get<any[]>("mcpServers", []);
+    const acpSessionId = await this.acpClient.newSession(modelName, mcpServers);
     this.acpClient.prompt(requestId, { sessionId: acpSessionId, prompt: finalPrompt }).catch(() => {});
   }
 

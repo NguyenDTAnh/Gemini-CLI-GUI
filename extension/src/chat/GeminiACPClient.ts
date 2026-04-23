@@ -1,6 +1,7 @@
 import * as cp from "node:child_process";
 import * as readline from "node:readline";
 import * as vscode from "vscode";
+import { randomUUID } from "node:crypto";
 import {
   createMessageConnection,
   MessageConnection,
@@ -156,23 +157,39 @@ export class GeminiACPClient {
           this.callbacks.onChunk(update.content.text);
         }
       } else if (update.sessionUpdate === "tool_call") {
-        const toolName = update.toolCall?.name || "unknown tool";
-        this.callbacks.onChunk(`\n> Agent đang sử dụng tool: ${toolName}\n`);
+        console.log("[ACP] tool_call update:", JSON.stringify(update, null, 2));
+        const tc = update.toolCall;
+        const toolName = tc?.name || tc?.title || tc?.id || "Action";
+        this.callbacks.onChunk(`\n[Tool: ${toolName}]\n`);
+      } else if (update.sessionUpdate === "agent_thought") {
+        if (update.content?.type === "text" && update.content?.text) {
+          this.callbacks.onChunk(`\n> thought\n${update.content.text}\n`);
+        }
+      } else {
+        // Fallback for other potential updates
+        console.log("[ACP] Other update:", JSON.stringify(update, null, 2));
+        if (update.content?.type === "text" && update.content?.text) {
+          this.callbacks.onChunk(update.content.text);
+        } else if (update.sessionUpdate) {
+          console.log(`[ACP] Received unhandled sessionUpdate: ${update.sessionUpdate}`, update);
+        }
       }
     });
 
     // Handle incoming JSON-RPC Requests from Server (Permission Prompts)
     this.connection.onRequest("session/request_permission", async (params: any) => {
       const requestId = randomUUID();
-      const title = params.toolCall?.title || "Agent wants to perform an action";
+      const tc = params.toolCall;
+      const title = tc?.title || tc?.name || tc?.id || params.message || "Agent wants to perform an action";
       const options = params.options || [];
 
       // Gửi request xuống webview thay vì hiện popup
-      this.callbacks.onChunk(`[PermissionRequest]:${JSON.stringify({
+      console.log(`[ACP] Requesting permission: ${title} (requestId: ${requestId})`);
+      this.callbacks.onChunk(`\n<permission_request>${JSON.stringify({
         requestId,
         message: title,
-        options: options.map((o: any) => ({ label: o.name, value: o.name }))
-      })}`);
+        options: options.map((o: any) => ({ label: o.name, value: o.optionId }))
+      })}</permission_request>\n`);
 
       // Chờ phản hồi từ webview thông qua cơ chế event-driven hoặc await (cần cách xử lý async)
       // Hiện tại do kiến trúc ACP, anh sẽ tạm dùng một promise để chờ
@@ -208,7 +225,7 @@ export class GeminiACPClient {
     }
   }
 
-  public async newSession(modelId?: string): Promise<string> {
+  public async newSession(modelId?: string, mcpServers: any[] = []): Promise<string> {
     if (!this.connection) {
       await this.start();
     }
@@ -217,7 +234,7 @@ export class GeminiACPClient {
       const res = await this.connection!.sendRequest(req, { 
         model: modelId,
         cwd: this.cwd || process.cwd(),
-        mcpServers: []
+        mcpServers: mcpServers
       });
       return res.sessionId;
     } catch (e) {
