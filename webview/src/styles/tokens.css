@@ -100,6 +100,7 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   font-weight: 700;
   background: var(--gradient-primary);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
   animation: orb-bg-pan 4s infinite linear;
 }
@@ -277,6 +278,7 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   background: var(--gradient-primary) !important;
   background-size: 200% 200% !important;
   -webkit-background-clip: text !important;
+  background-clip: text !important;
   -webkit-text-fill-color: transparent !important;
   color: transparent !important;
   animation: orb-bg-pan 4s infinite linear !important;
@@ -557,6 +559,7 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   background: var(--gradient-primary) !important;
   background-size: 200% 200% !important;
   -webkit-background-clip: text !important;
+  background-clip: text !important;
   -webkit-text-fill-color: transparent !important;
   color: transparent !important;
   animation: orb-bg-pan 4s infinite linear !important;
@@ -581,6 +584,7 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   padding: 0 !important; 
   font-weight: normal !important; 
   -webkit-background-clip: border-box !important;
+  background-clip: border-box !important;
   -webkit-text-fill-color: var(--ink) !important;
   animation: none !important;
 }
@@ -670,24 +674,59 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
 .composer {
   flex-shrink: 0;
   z-index: 10;
-  padding: 10px 14px 4px; /* Phục hồi padding bottom */
+  padding: 10px 14px 4px;
   display: flex;
   flex-direction: column;
   gap: 6px;
   max-width: 800px;
   margin: 0 auto 16px auto;
   width: calc(100% - 32px);
-  background: var(--bg-1);
+  
+  /* Glassy Vibe */
+  background: transparent;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border-radius: 12px;
-  border: 1px solid rgba(168, 199, 250, 0.15);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.02) inset;
+  position: relative;
+  
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
   overflow: visible !important;
-  backdrop-filter: blur(10px);
+}
+
+/* Animated Border Gradient using Masking for Transparency */
+.composer::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 12px; 
+  padding: 1px; /* Border thickness */
+  background: var(--gradient-primary);
+  background-size: 200% 100%;
+  animation: border-pan 6s linear infinite;
+  
+  -webkit-mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+@keyframes border-pan {
+  from { background-position: 200% 0%; }
+  to { background-position: -200% 0%; }
 }
 
 .composer.dragging {
-  border-color: rgba(168, 199, 250, 0.55);
-  background: rgba(168, 199, 250, 0.07);
+  background: rgba(168, 199, 250, 0.1);
+}
+
+.composer.dragging::before {
+  background: rgba(168, 199, 250, 0.55);
+  animation: none;
 }
 
 .composer textarea {
@@ -789,6 +828,7 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   white-space: nowrap;
   background: var(--gradient-primary);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
@@ -812,6 +852,7 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   background: var(--gradient-primary) !important;
   background-size: 200% 200% !important;
   -webkit-background-clip: text !important;
+  background-clip: text !important;
   -webkit-text-fill-color: transparent !important;
   color: transparent !important;
   animation: orb-bg-pan 4s infinite linear !important;
@@ -900,6 +941,7 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   background: var(--gradient-primary) !important;
   background-size: 200% 200% !important;
   -webkit-background-clip: text !important;
+  background-clip: text !important;
   -webkit-text-fill-color: transparent !important;
   color: transparent !important;
   animation: orb-bg-pan 4s infinite linear !important;
@@ -941,6 +983,7 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   background: var(--gradient-primary) !important;
   background-size: 200% 200% !important;
   -webkit-background-clip: text !important;
+  background-clip: text !important;
   -webkit-text-fill-color: transparent !important;
   color: transparent !important;
   animation: orb-bg-pan 4s infinite linear !important;
@@ -965,6 +1008,7 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   background: var(--gradient-primary) !important;
   background-size: 200% 200% !important;
   -webkit-background-clip: text !important;
+  background-clip: text !important;
   -webkit-text-fill-color: transparent !important;
   color: transparent !important;
   animation: orb-bg-pan 4s infinite linear !important;
@@ -974,6 +1018,7 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   background: var(--gradient-primary) !important;
   background-size: 200% 200% !important;
   -webkit-background-clip: text !important;
+  background-clip: text !important;
   -webkit-text-fill-color: transparent !important;
   color: transparent !important;
   animation: orb-bg-pan 4s infinite linear !important;
@@ -997,6 +1042,7 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   background: var(--gradient-primary) !important;
   background-size: 200% 200% !important;
   -webkit-background-clip: text !important;
+  background-clip: text !important;
   -webkit-text-fill-color: transparent !important;
   color: transparent !important;
   animation: orb-bg-pan 4s infinite linear !important;
@@ -1055,6 +1101,7 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   background: var(--gradient-primary) !important;
   background-size: 200% 200% !important;
   -webkit-background-clip: text !important;
+  background-clip: text !important;
   -webkit-text-fill-color: transparent !important;
   color: transparent !important;
   animation: orb-bg-pan 4s infinite linear !important;
@@ -1067,6 +1114,7 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   background: var(--gradient-primary) !important;
   background-size: 200% 200% !important;
   -webkit-background-clip: text !important;
+  background-clip: text !important;
   -webkit-text-fill-color: transparent !important;
   color: transparent !important;
   animation: orb-bg-pan 4s infinite linear !important;
@@ -1106,6 +1154,7 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   background-size: 200% 200% !important;
   animation: orb-bg-pan 4s infinite linear !important;
   -webkit-background-clip: text !important;
+  background-clip: text !important;
   -webkit-text-fill-color: transparent !important;
   width: 14px;
   height: 14px;
@@ -1142,7 +1191,7 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   font-size: 13px;
   line-height: 1.6;
-  background: var(--bg-1);
+  background: transparent;
   color: var(--ink);
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   min-height: 40px;
@@ -1265,6 +1314,7 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   background: var(--gradient-primary) !important;
   background-size: 200% 200% !important;
   -webkit-background-clip: text !important;
+  background-clip: text !important;
   -webkit-text-fill-color: transparent !important;
   color: transparent !important;
   animation: orb-bg-pan 4s infinite linear !important;
@@ -1328,6 +1378,7 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   );
   background-size: 200% auto;
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
   animation: shiny-text 2.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
@@ -1562,6 +1613,7 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   );
   background-size: 200% auto;
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
   animation: shiny-text 3s infinite linear;
 }

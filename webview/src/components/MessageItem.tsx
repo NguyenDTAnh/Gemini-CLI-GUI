@@ -1,10 +1,10 @@
-import { User, Cpu, Loader2, ChevronDown, ChevronUp } from "lucide-react";
+import { User, Loader2 } from "lucide-react";
 import { GeminiLogo } from "./GeminiLogo";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkEmoji from "remark-emoji";
 import rehypeRaw from "rehype-raw";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { ChatMessage } from "../types";
@@ -16,23 +16,6 @@ import { ModelThinking } from "./ModelThinking";
 interface MessageItemProps {
   message: ChatMessage;
   onRetry?: () => void;
-}
-
-function ToolCallBlock({ content, status }: { content: string, status?: string }) {
-  const isGenericAction = content.toLowerCase() === 'action';
-  const displayText = isGenericAction ? 'Executing task...' : `Executing: ${content}`;
-  const isComplete = status === 'complete';
-  
-  return (
-    <div className={`progress-status ${isComplete ? 'completed' : ''}`}>
-      <span className="progress-icon">
-        <Loader2 size={12} className={isComplete ? '' : 'spin-icon'} />
-      </span>
-      <span className="progress-text">
-        {displayText}
-      </span>
-    </div>
-  );
 }
 
 export function MessageItem({ message }: MessageItemProps) {
@@ -206,7 +189,7 @@ export function MessageItem({ message }: MessageItemProps) {
                         </>
                       ) : part.content.startsWith("[Tool:") ? (
                         (() => {
-                          const rawName = part.content.replace(/[\[\]]/g, '').replace("Tool:", "").trim();
+                          const rawName = part.content.replace(/[[\]]/g, '').replace("Tool:", "").trim();
                           // Nếu tên là Action hoặc Task thì hiện Processing cho nó chuyên nghiệp
                           if (rawName.toLowerCase() === 'action' || rawName.toLowerCase() === 'task') {
                             return "Processing...";

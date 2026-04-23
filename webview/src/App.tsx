@@ -160,8 +160,15 @@ export default function App() {
     const filePayloads = files.length > 0
       ? await Promise.all(files.map((file) => toDroppedPayload(file)))
       : [];
+    
+    // Parse extra metadata/paths from dataTransfer, but filter out what we already got from files
     const uriPayloads = parseDroppedPathPayloads(e.dataTransfer);
-    const payloads = [...filePayloads, ...uriPayloads];
+    
+    // Build a set of paths we already have from binary file analysis
+    const existingPaths = new Set(filePayloads.map(p => p.fsPath).filter(Boolean));
+    const filteredUriPayloads = uriPayloads.filter(p => !existingPaths.has(p.fsPath));
+
+    const payloads = [...filePayloads, ...filteredUriPayloads];
 
     if (payloads.length === 0) return;
 
