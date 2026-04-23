@@ -44,8 +44,8 @@ export function MessageItem({ message }: MessageItemProps) {
 
     if (content) {
       if (isAssistant) {
-        // Regex để tách các phần: diff, subagent, progress, thought, tool calls và PermissionRequest (dùng tag linh hoạt)
-        const regex = /(?=diff --git|--- [ai]\/|\[Subagent:|<subagent |> thought|<thought>|<think>|> call:|\[Tool:|\s*<permission_request>)/g;
+        // Regex chỉ cắt ở đầu các khối đặc biệt để đảm bảo tính ổn định khi streaming
+        const regex = /(?=diff --git|--- [ai]\/|\[Subagent:|<subagent |<thought>|<think>|> call:|\[Tool:|\s*<permission_request>)/g;
         const splitSegments = content.split(regex);
         
         splitSegments.filter(s => s.trim()).forEach(s => {
@@ -78,19 +78,39 @@ export function MessageItem({ message }: MessageItemProps) {
               console.error("Failed to parse permission request segment", e);
               segments.push({ type: "text", content: s });
             }
-          } else if (s.startsWith("diff --git") || s.startsWith("---")) {
+          } else if (trimmed.startsWith("diff --git") || trimmed.startsWith("---")) {
             segments.push({ type: "diff", content: s.trim() });
-          } else if (s.startsWith("> thought") || s.startsWith("<thought>") || s.startsWith("<think>")) {
-            let thoughtContent = s.trim();
+          } else if (trimmed.startsWith("<thought>") || trimmed.startsWith("<think>")) {
+            let thoughtPart = trimmed;
+            let remainingPart = "";
+            
+            // Tìm thẻ đóng để tách nội dung thực sự ra khỏi block suy nghĩ
+            const thoughtEndTags = ["</thought>", "</think>"];
+            
+            for (const tag of thoughtEndTags) {
+              const idx = trimmed.indexOf(tag);
+              if (idx !== -1) {
+                thoughtPart = trimmed.substring(0, idx + tag.length);
+                remainingPart = trimmed.substring(idx + tag.length);
+                break;
+              }
+            }
+            
+            // Làm sạch nội dung thinking (bỏ tag)
+            let thoughtContent = thoughtPart;
             if (thoughtContent.startsWith("<thought>")) {
               thoughtContent = thoughtContent.replace("<thought>", "").replace("</thought>", "");
             } else if (thoughtContent.startsWith("<think>")) {
               thoughtContent = thoughtContent.replace("<think>", "").replace("</think>", "");
-            } else {
-              thoughtContent = thoughtContent.replace("> thought", "");
             }
+            
             segments.push({ type: "thought", content: thoughtContent.trim() });
-          } else if (s.startsWith("> call:") || s.startsWith("[Tool:")) {
+            
+            // Nếu có phần nội dung sau thẻ đóng, đẩy nó vào segment text bình thường
+            if (remainingPart.trim()) {
+              segments.push({ type: "text", content: remainingPart });
+            }
+          } else if (trimmed.startsWith("> call:") || trimmed.startsWith("[Tool:")) {
             const lines = s.trim().split('\n');
             const firstLine = lines[0].trim();
             const callContent = firstLine.startsWith("> call:") 
@@ -174,26 +194,22 @@ export function MessageItem({ message }: MessageItemProps) {
                   <DiffViewer diffText={part.content} />
                 ) : part.type === "thought" ? (
                   <ModelThinking content={part.content} />
-                ) : part.type === "call" ? (
-                  <ToolCallBlock content={part.content} status={message.status} />
-                ) : part.type === "progress" ? (
+                ) : (part.type === "call" || part.type === "progress") ? (
                   <div className="progress-status">
                     <span className="progress-icon">
                       <Loader2 size={14} className="spin-icon" />
                     </span>
-                    <span className="progress-text">
+                    <span className="progress-text shiny-text">
                       {part.content.startsWith("> call:") ? (
                         <>
-                          <span style={{ opacity: 0.6, marginRight: '4px' }}>Tool:</span>
-                          {part.content.replace("> call:", "").trim()}
+                          <span style={{ opacity: 0.7 }}>Tool:</span> {part.content.replace("> call:", "").trim()}
                         </>
                       ) : part.content.startsWith("[Tool:") ? (
                         <>
-                          <span style={{ opacity: 0.6, marginRight: '4px' }}>MCP:</span>
-                          {part.content.replace(/[\[\]]/g, '').replace("Tool:", "").trim()}
+                          <span style={{ opacity: 0.7 }}>MCP:</span> {part.content.replace(/[\[\]]/g, '').replace("Tool:", "").trim()}
                         </>
                       ) : (
-                        part.content.split('\n')[0].replace(/[\][>]/g, '').trim()
+                        part.content.split('\n')[0].replace(/[\][>]/g, '').trim() || "Processing..."
                       )}
                     </span>
                   </div>

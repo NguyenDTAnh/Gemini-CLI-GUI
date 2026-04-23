@@ -7,6 +7,7 @@ import {
   Agent,
   ChatMode,
   ChatSession,
+  DroppedFilePayload,
   ExtensionToWebviewMessage,
   SlashCommandDescriptor,
   WebviewToExtensionMessage
@@ -110,7 +111,7 @@ export default function App() {
   const [composerPrefill, setComposerPrefill] = useState<{
     nonce: number;
     text: string;
-    append?: boolean;
+    append: boolean;
     contextChip?: { display: string; content: string; languageId: string };
     contextChips?: Array<{ display: string; content?: string; languageId?: string; type: 'mention' | 'snippet'; id?: string }>;
   } | null>(null);

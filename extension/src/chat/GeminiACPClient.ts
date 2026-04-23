@@ -122,6 +122,7 @@ export class GeminiACPClient {
   private process?: cp.ChildProcessWithoutNullStreams;
   private connection?: MessageConnection;
   private runningRequestId?: string;
+  private inThoughtBlock = false;
   private readonly callbacks: ClientCallbacks;
 
   constructor(
@@ -152,19 +153,55 @@ export class GeminiACPClient {
       const update = params?.update;
       if (!update) return;
 
+      const isThought = update.sessionUpdate === "agent_thought_chunk" || update.sessionUpdate === "agent_thought";
+      
+      if (this.inThoughtBlock && !isThought) {
+        this.callbacks.onChunk("\n</thought>\n");
+        this.inThoughtBlock = false;
+      }
+
       if (update.sessionUpdate === "agent_message_chunk") {
         if (update.content?.type === "text" && update.content?.text) {
           this.callbacks.onChunk(update.content.text);
+        }
+      } else if (update.sessionUpdate === "agent_thought_chunk") {
+        if (update.content?.type === "text" && update.content?.text) {
+          if (!this.inThoughtBlock) {
+            this.callbacks.onChunk("\n<thought>\n");
+            this.inThoughtBlock = true;
+          }
+          // Kiểm tra nếu là JSON (thường từ agent_thought) thì format lại cho đẹp
+          let text = update.content.text;
+          try {
+            if (text.trim().startsWith('{')) {
+              const parsed = JSON.parse(text);
+              text = parsed.query || parsed.thought || text;
+            }
+          } catch (e) {}
+          this.callbacks.onChunk(text);
         }
       } else if (update.sessionUpdate === "tool_call") {
         console.log("[ACP] tool_call update:", JSON.stringify(update, null, 2));
         const tc = update.toolCall;
         const toolName = tc?.name || tc?.title || tc?.id || "Action";
         this.callbacks.onChunk(`\n[Tool: ${toolName}]\n`);
+      } else if (update.sessionUpdate === "tool_call_update") {
+        console.log("[ACP] tool_call_update:", JSON.stringify(update, null, 2));
+        const status = update.status === "completed" ? "Done" : update.status;
+        this.callbacks.onChunk(`\n[Tool: ${update.title || 'Action'} - ${status}]\n`);
       } else if (update.sessionUpdate === "agent_thought") {
         if (update.content?.type === "text" && update.content?.text) {
-          this.callbacks.onChunk(`\n> thought\n${update.content.text}\n`);
+          if (!this.inThoughtBlock) {
+            this.callbacks.onChunk("\n<thought>\n");
+            this.inThoughtBlock = true;
+          }
+          this.callbacks.onChunk(update.content.text);
+          this.callbacks.onChunk("\n</thought>\n");
+          this.inThoughtBlock = false;
         }
+      } else if (update.sessionUpdate === "available_commands_update") {
+        console.log("[ACP] Available commands updated:", update.availableCommands?.length);
+        // Tạm thời chưa cần hiển thị ra UI nhưng không báo unhandled nữa
       } else {
         // Fallback for other potential updates
         console.log("[ACP] Other update:", JSON.stringify(update, null, 2));
