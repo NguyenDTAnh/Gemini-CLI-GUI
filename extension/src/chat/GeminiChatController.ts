@@ -3,7 +3,7 @@ import * as path from "node:path";
 import Fuse, { FuseResult } from "fuse.js";
 import * as vscode from "vscode";
 import { ContextCollector } from "./ContextCollector";
-import { GeminiProcessManager } from "./GeminiProcessManager";
+import { GeminiACPClient } from "./GeminiACPClient";
 import { SlashCommandRouter } from "./SlashCommandRouter";
 import { ChatSessionStore } from "../state/ChatSessionStore";
 import {
@@ -33,7 +33,7 @@ interface MentionIndexCache {
 
 export class GeminiChatController {
   private webview?: vscode.Webview;
-  private readonly processManager = new GeminiProcessManager();
+  private acpClient?: GeminiACPClient;
   private readonly slashRouter = new SlashCommandRouter();
   private readonly contextCollector = new ContextCollector();
   private debugModeEnabled = false;
@@ -62,7 +62,7 @@ export class GeminiChatController {
   }
 
   dispose(): void {
-    this.processManager.stopAll();
+    this.acpClient?.stop();
   }
 
   async createSession(): Promise<void> {
@@ -101,7 +101,8 @@ export class GeminiChatController {
       return;
     }
 
-    this.processManager.stopRequest(this.activeRequest.requestId);
+    this.acpClient?.cancel();
+    await this.finishRequest(this.activeRequest.sessionId, this.activeRequest.assistantMessageId, this.activeRequest.requestId, "cancelled");
   }
 
   async prefillFromActiveSelection(): Promise<void> {
@@ -203,7 +204,7 @@ export class GeminiChatController {
     }
 
     if (this.activeRequest) {
-      this.processManager.stopRequest(this.activeRequest.requestId);
+      await this.stopActiveRequest();
     }
 
     const session = await this.ensureSession(sessionId);
@@ -228,12 +229,6 @@ export class GeminiChatController {
 
     const preferredModel = (session.defaultModelId || "").trim();
     const modelName = preferredModel || this.extractModelNameFromArgs(defaultArgs) || "Gemini";
-    const baseArgs = preferredModel ? this.overrideModelArg(defaultArgs, preferredModel) : defaultArgs;
-    
-    // Always force stream-json to get structured events for tool calls and streams
-    const cleanArgs = baseArgs.filter(a => !["--output-format", "-o", "stream-json", "json", "text"].includes(a));
-    const resolvedArgs = [...cleanArgs, "--output-format", "stream-json"];
-
     const effectiveMode = route.commandMeta?.mode ?? session.activeMode ?? "plan";
     const selectedAgent = (session.defaultAgentId || "").trim();
 
@@ -271,7 +266,6 @@ export class GeminiChatController {
     const cliPath = config.get<string>("cliPath", "gemini");
     const maxContextChars = config.get<number>("maxContextChars", 16000);
     const maxAttachedFiles = config.get<number>("maxAttachedFiles", 5);
-    const timeoutMs = config.get<number>("requestTimeoutMs", 120000);
     const responseLanguage = config.get<string>("responseLanguage", "vi");
 
     await this.resolveMentionAttachments(prompt, session, maxAttachedFiles);
@@ -286,48 +280,59 @@ export class GeminiChatController {
       ? `${route.transformedPrompt}\n\n${mentionContext}`
       : route.transformedPrompt;
 
-    this.processManager.runRequest({
-      requestId,
-      cliPath,
-      args: resolvedArgs,
-      cwd: vscode.workspace.workspaceFolders?.[0]?.uri.fsPath,
-      timeoutMs,
-      agentCommand: selectedAgent ? `/${selectedAgent}` : undefined,
-      prompt: transformedPrompt,
-      responseLanguage,
-      contextText,
-      onChunk: (chunk) => {
-        const liveSession = this.store.getSession(session.id);
-        if (!liveSession) {
-          return;
+    if (!this.acpClient) {
+      this.acpClient = new GeminiACPClient(
+        cliPath,
+        vscode.workspace.workspaceFolders?.[0]?.uri.fsPath,
+        {
+          onChunk: (chunk) => {
+            if (!this.activeRequest) return;
+            const liveSession = this.store.getSession(this.activeRequest.sessionId);
+            if (!liveSession) return;
+
+            const messageRef = liveSession.messages.find((item) => item.id === this.activeRequest!.assistantMessageId);
+            if (!messageRef) return;
+
+            messageRef.content += chunk;
+            messageRef.status = "streaming";
+            liveSession.updatedAt = Date.now();
+
+            this.post({
+              type: "assistantStream",
+              sessionId: liveSession.id,
+              requestId: this.activeRequest.requestId,
+              chunk
+            });
+          },
+          onDone: (reqId) => {
+            if (this.activeRequest?.requestId === reqId) {
+              void this.finishRequest(this.activeRequest.sessionId, this.activeRequest.assistantMessageId, reqId, "complete");
+            }
+          },
+          onError: (reqId, errorMessage) => {
+            if (this.activeRequest?.requestId === reqId) {
+              void this.finishRequest(this.activeRequest.sessionId, this.activeRequest.assistantMessageId, reqId, "error", errorMessage);
+            }
+          }
         }
+      );
+      await this.acpClient.start();
+    }
 
-        const messageRef = liveSession.messages.find((item) => item.id === assistantMessage.id);
-        if (!messageRef) {
-          return;
-        }
+    const agentCommand = selectedAgent ? `/${selectedAgent}` : undefined;
+    const finalPrompt = [
+      ...(agentCommand ? [agentCommand] : []),
+      "You are Gemini CLI running inside VS Code extension via ACP Mode.",
+      `Respond in language: ${responseLanguage}.`,
+      "If context files are provided, use them as primary source.",
+      "",
+      contextText.trim() ? `Attached context:\n${contextText}\n` : "",
+      "User prompt:",
+      transformedPrompt
+    ].filter(Boolean).join("\n");
 
-        messageRef.content += chunk;
-        messageRef.status = "streaming";
-        liveSession.updatedAt = Date.now();
-
-        this.post({
-          type: "assistantStream",
-          sessionId: liveSession.id,
-          requestId,
-          chunk
-        });
-      },
-      onDone: () => {
-        void this.finishRequest(session.id, assistantMessage.id, requestId, "complete");
-      },
-      onCancelled: () => {
-        void this.finishRequest(session.id, assistantMessage.id, requestId, "cancelled");
-      },
-      onError: (errorMessage) => {
-        void this.finishRequest(session.id, assistantMessage.id, requestId, "error", errorMessage);
-      }
-    });
+    const acpSessionId = await this.acpClient.newSession(modelName);
+    this.acpClient.prompt(requestId, { sessionId: acpSessionId, prompt: finalPrompt }).catch(() => {});
   }
 
   private async finishRequest(
