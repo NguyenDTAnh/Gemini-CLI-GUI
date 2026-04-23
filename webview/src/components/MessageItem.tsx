@@ -205,9 +205,27 @@ export function MessageItem({ message }: MessageItemProps) {
                           <span style={{ opacity: 0.7 }}>Tool:</span> {part.content.replace("> call:", "").trim()}
                         </>
                       ) : part.content.startsWith("[Tool:") ? (
-                        <>
-                          <span style={{ opacity: 0.7 }}>MCP:</span> {part.content.replace(/[\[\]]/g, '').replace("Tool:", "").trim()}
-                        </>
+                        (() => {
+                          const rawName = part.content.replace(/[\[\]]/g, '').replace("Tool:", "").trim();
+                          // Nếu tên là Action hoặc Task thì hiện Processing cho nó chuyên nghiệp
+                          if (rawName.toLowerCase() === 'action' || rawName.toLowerCase() === 'task') {
+                            return "Processing...";
+                          }
+                          // Nếu là MCP tool (có dấu :) thì bóc tách cho gọn
+                          if (rawName.includes(':')) {
+                            const parts = rawName.split(':');
+                            return (
+                              <>
+                                <span style={{ opacity: 0.7 }}>{parts[0]}:</span> {parts.slice(1).join(':')}
+                              </>
+                            );
+                          }
+                          return (
+                            <>
+                              <span style={{ opacity: 0.7 }}>Tool:</span> {rawName}
+                            </>
+                          );
+                        })()
                       ) : (
                         part.content.split('\n')[0].replace(/[\][>]/g, '').trim() || "Processing..."
                       )}

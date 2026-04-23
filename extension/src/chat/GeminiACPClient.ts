@@ -183,12 +183,13 @@ export class GeminiACPClient {
       } else if (update.sessionUpdate === "tool_call") {
         console.log("[ACP] tool_call update:", JSON.stringify(update, null, 2));
         const tc = update.toolCall;
-        const toolName = tc?.name || tc?.title || tc?.id || "Action";
+        const toolName = tc?.name || tc?.title || tc?.id || update.title || "Executing...";
         this.callbacks.onChunk(`\n[Tool: ${toolName}]\n`);
       } else if (update.sessionUpdate === "tool_call_update") {
         console.log("[ACP] tool_call_update:", JSON.stringify(update, null, 2));
         const status = update.status === "completed" ? "Done" : update.status;
-        this.callbacks.onChunk(`\n[Tool: ${update.title || 'Action'} - ${status}]\n`);
+        const toolName = update.title || update.toolCall?.name || update.toolCall?.title || "Task";
+        this.callbacks.onChunk(`\n[Tool: ${toolName} - ${status}]\n`);
       } else if (update.sessionUpdate === "agent_thought") {
         if (update.content?.type === "text" && update.content?.text) {
           if (!this.inThoughtBlock) {
