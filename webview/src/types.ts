@@ -95,7 +95,8 @@ export type ExtensionToWebviewMessage =
   | { type: "modeUpdated"; sessionId: string; mode: ChatMode }
   | { type: "debugModeToggled"; enabled: boolean }
   | { type: "info"; message: string }
-  | { type: "error"; message: string };
+  | { type: "error"; message: string }
+  | { type: "permissionRequest"; requestId: string; message: string; options: Array<{ label: string; value: string }> };
 
 export type WebviewToExtensionMessage =
   | { type: "ready" }
@@ -113,4 +114,5 @@ export type WebviewToExtensionMessage =
   | { type: "toggleDebugMode"; enabled: boolean }
   | { type: "attachFile" }
   | { type: "removeAttachment"; sessionId: string; attachmentId: string }
-  | { type: "clearSessions" };
+  | { type: "clearSessions" }
+  | { type: "permissionResponse"; requestId: string; value: string };

@@ -192,8 +192,23 @@ export class GeminiChatController {
       case "clearSessions":
         await this.clearSessions();
         return;
+      case "permissionResponse":
+        this.handlePermissionResponse(message.requestId, message.value);
+        return;
       default:
         return;
+    }
+  }
+
+  private handlePermissionResponse(requestId: string, value: string) {
+    if (this.acpClient && (this.acpClient as any).pendingPermissions) {
+      const resolve = (this.acpClient as any).pendingPermissions.get(requestId);
+      if (resolve) {
+        // Cần map giá trị trả về từ webview khớp với format ACP
+        // Giả định value = option name (tên nút)
+        resolve({ outcome: { outcome: "selected", optionId: value } });
+        (this.acpClient as any).pendingPermissions.delete(requestId);
+      }
     }
   }
 

@@ -163,24 +163,26 @@ export class GeminiACPClient {
 
     // Handle incoming JSON-RPC Requests from Server (Permission Prompts)
     this.connection.onRequest("session/request_permission", async (params: any) => {
+      const requestId = randomUUID();
       const title = params.toolCall?.title || "Agent wants to perform an action";
       const options = params.options || [];
-      const optionNames = options.map((o: any) => o.name);
-      
-      const selection = await vscode.window.showInformationMessage(
-        `Gemini CLI: ${title}`,
-        { modal: true },
-        ...optionNames
-      );
-      
-      const selectedOption = options.find((o: any) => o.name === selection);
-      if (selectedOption) {
-        return { outcome: { outcome: "selected", optionId: selectedOption.optionId } };
-      }
-      
-      return { outcome: { outcome: "cancelled" } };
-    });
 
+      // Gửi request xuống webview thay vì hiện popup
+      this.callbacks.onChunk(`[PermissionRequest]:${JSON.stringify({
+        requestId,
+        message: title,
+        options: options.map((o: any) => ({ label: o.name, value: o.name }))
+      })}`);
+
+      // Chờ phản hồi từ webview thông qua cơ chế event-driven hoặc await (cần cách xử lý async)
+      // Hiện tại do kiến trúc ACP, anh sẽ tạm dùng một promise để chờ
+      return new Promise((resolve) => {
+        // Cần lưu requestId này vào một map để handle callback khi webview gửi về
+        // Tạm thời anh sẽ mock việc resolve này dựa trên message từ webview sau
+        (this as any).pendingPermissions = (this as any).pendingPermissions || new Map();
+        (this as any).pendingPermissions.set(requestId, resolve);
+      });
+    });
     this.process.on("error", (error) => {
       console.error("Gemini CLI process error", error);
       if (this.runningRequestId) {

@@ -10,6 +10,7 @@ import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { ChatMessage } from "../types";
 import { DiffViewer } from "./DiffViewer";
 import { DiffStats } from "./DiffStats";
+import { PermissionRequest } from "./PermissionRequest";
 
 interface MessageItemProps {
   message: ChatMessage;
@@ -21,14 +22,26 @@ export function MessageItem({ message }: MessageItemProps) {
 
   const parts = useMemo(() => {
     const content = message.content || "";
-    const segments: { type: "text" | "diff" | "progress" | "loading"; content: string }[] = [];
+    const segments: { type: "text" | "diff" | "progress" | "loading" | "permission"; content: string; data?: any }[] = [];
 
     if (content) {
       if (isAssistant) {
-        // Assistant: Nhận diện diff, subagent, thought, tool calls
+        // Kiểm tra xem có phải là permission request không
+        try {
+          const jsonMatch = content.match(/^\[PermissionRequest\]:(.*)/s);
+          if (jsonMatch) {
+            const data = JSON.parse(jsonMatch[1]);
+            segments.push({ type: "permission", content: "", data });
+            return segments;
+          }
+        } catch (e) {
+          console.error("Failed to parse permission request", e);
+        }
+
+        // ... (phần logic cũ)
         const regex = /(?=diff --git|--- [ai]\/|\[Subagent:|<subagent |> thought|> call:|\[Tool:)/g;
         const splitSegments = content.split(regex);
-
+        // ... (phần còn lại của logic cũ)
         splitSegments.filter(s => s.trim()).forEach(s => {
           if (s.startsWith("diff --git") || s.startsWith("---")) {
             segments.push({ type: "diff", content: s.trim() });
@@ -45,7 +58,7 @@ export function MessageItem({ message }: MessageItemProps) {
           }
         });
       } else {
-        // User: Đơn giản là text, chỉ tách diff nếu cần
+        // User: Đơn giản là text
         const regex = /(?=diff --git|--- [ai]\/)/g;
         const splitSegments = content.split(regex);
         splitSegments.filter(s => s).forEach(s => {
@@ -90,7 +103,9 @@ export function MessageItem({ message }: MessageItemProps) {
 
             return (
               <div key={idx} className={`message-bubble ${message.role} ${part.type}`}>
-                {part.type === "loading" ? (
+                {part.type === "permission" ? (
+                  <PermissionRequest {...part.data} />
+                ) : part.type === "loading" ? (
                   <div className="gemini-loader">
                     <div className="shimmer-line" style={{ width: '90%' }}></div>
                     <div className="shimmer-line" style={{ width: '70%' }}></div>
@@ -160,3 +175,4 @@ export function MessageItem({ message }: MessageItemProps) {
     </article>
   );
 }
+

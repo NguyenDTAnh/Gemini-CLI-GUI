@@ -1354,7 +1354,55 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   display: inline-block !important;
 }
 
-.composer .primary-btn {
-  position: relative;
+/* Permission Request Styles */
+.permission-request-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  background: var(--bg-1);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  width: 100%;
 }
+
+.permission-message {
+  margin: 0;
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.permission-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.permission-btn {
+  all: unset;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.permission-btn.primary {
+  background: var(--gradient-primary);
+  color: var(--bg-0);
+}
+
+.permission-btn.secondary {
+  background: var(--bg-2);
+  color: var(--ink);
+}
+
+.permission-btn:hover {
+  filter: brightness(1.2);
+}
+
 
