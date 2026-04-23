@@ -165,7 +165,7 @@ export function MessageItem({ message }: MessageItemProps) {
         <header className="message-head">
           <div className="avatar-box">
             {isAssistant ? (
-              <GeminiLogo size={14} />
+              <GeminiLogo size={16} />
             ) : (
               <User size={12} fill="currentColor" />
             )}

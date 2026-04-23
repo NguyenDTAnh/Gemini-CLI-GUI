@@ -452,8 +452,8 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
 }
 
 .avatar-box {
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
   background: var(--bg-2);
   display: flex;
@@ -1539,7 +1539,12 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   align-items: center;
   justify-content: center;
   color: var(--ink);
-  opacity: 0.7;
+  opacity: 0.8;
+}
+
+.thought-icon .bullet {
+  font-size: 8px;
+  line-height: 1;
 }
 
 .shiny-text {

@@ -8,6 +8,8 @@ export interface SuggestionItem {
 
 export interface ContentEditableInputHandle {
   removeChip: (id: string) => void;
+  getRawText: () => string;
+  clear: () => void;
 }
 
 interface ContentEditableInputProps {
@@ -44,9 +46,16 @@ export const ContentEditableInput = forwardRef<ContentEditableInputHandle, Conte
   const currentChipIdsRef = useRef<Set<string>>(new Set());
 
   useImperativeHandle(ref, () => ({
+    getRawText,
+    clear: () => {
+      if (editorRef.current) {
+        editorRef.current.innerHTML = '';
+        currentChipIdsRef.current.clear();
+      }
+    },
     removeChip: (idOrPath: string) => {
       if (!editorRef.current || !idOrPath) return;
-      
+
       const allChips = editorRef.current.querySelectorAll('.mention-chip');
       let removedCount = 0;
 
@@ -299,9 +308,6 @@ export const ContentEditableInput = forwardRef<ContentEditableInputHandle, Conte
         const text = getRawText().trim();
         if (text) {
           onSubmit(text);
-          if (editorRef.current) {
-            editorRef.current.innerHTML = '';
-          }
         }
       }
     }

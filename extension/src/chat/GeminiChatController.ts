@@ -375,7 +375,15 @@ export class GeminiChatController {
     ].filter(Boolean).join("\n");
 
     const mcpServers = config.get<any[]>("mcpServers", []);
-    const acpSessionId = await this.acpClient.newSession(modelName, mcpServers);
+    
+    // Reuse existing acpSessionId if available to maintain context
+    let acpSessionId = session.acpSessionId;
+    if (!acpSessionId) {
+      acpSessionId = await this.acpClient.newSession(modelName, mcpServers);
+      session.acpSessionId = acpSessionId;
+      await this.store.upsertSession(session);
+    }
+    
     this.acpClient.prompt(requestId, { sessionId: acpSessionId, prompt: finalPrompt }).catch(() => {});
   }
 

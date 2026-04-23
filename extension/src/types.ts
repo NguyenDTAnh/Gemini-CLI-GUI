@@ -71,6 +71,7 @@ export interface ChatSession {
   activeMode?: ChatMode;
   defaultAgentId?: string;
   defaultModelId?: string;
+  acpSessionId?: string;
 }
 
 export interface BootstrapPayload {

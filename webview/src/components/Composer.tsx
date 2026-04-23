@@ -175,6 +175,7 @@ export function Composer({
       return;
     }
     onSubmit(prompt);
+    inputRef.current?.clear();
   };
 
   const handleRemoveAttachment = (id: string) => {
@@ -251,6 +252,7 @@ export function Composer({
       className="composer"
     >
       <SharedGradients />
+      {/* Soft deleted attachments section
       {attachments.length > 0 && (
         <div className="composer-attachments">
           {attachments.map((attachment) => (
@@ -270,11 +272,12 @@ export function Composer({
           ))}
         </div>
       )}
+      */}
 
       <div className="composer-input-wrapper">
         <ContentEditableInput
           ref={inputRef}
-          placeholder="Drop files/images, use @filename or /workflow"
+          placeholder="Use @filename or /workflow"
           slashCommands={slashMentionData}
           mentionCandidates={fileMentionData}
           onSearchFiles={onSearchFiles}
@@ -289,9 +292,11 @@ export function Composer({
 
       <div className="composer-actions">
         <div className="action-left-group">
+          {/* Soft deleted attach button
           <button type="button" className="ghost-btn" onClick={onAttach} title="Attach file">
             <Paperclip size={14} stroke="url(#primary-gradient)" />
           </button>
+          */}
 
           <button
             type="button"
@@ -322,7 +327,8 @@ export function Composer({
         <div className="action-right-group">
           {!running && (
             <button type="button" className="primary-btn" title="Send message" onClick={() => {
-               // The content editable input handles Enter to submit directly
+               const text = inputRef.current?.getRawText() || "";
+               submit(text);
             }}>
               <SendHorizonal size={16} stroke="url(#primary-gradient)" />
             </button>

@@ -196,16 +196,19 @@ export default function App() {
   };
 
   const mentionCandidates = useMemo(() => {
+    /* Soft deleted: exclude attached files from mention suggestions
     const attached = (activeSession?.attachments || []).map((attachment) => ({
       name: attachment.name,
       fsPath: attachment.fsPath
     }));
+    */
     const searched = mentionSearchResults.map((path) => ({
       name: path.split("/").pop() || path,
       fsPath: path
     }));
 
-    const all = [...searched, ...attached];
+    // const all = [...searched, ...attached];
+    const all = searched;
     const unique = new Map<string, { name: string; fsPath: string }>();
     for (const item of all) {
       if (!unique.has(item.fsPath)) {
