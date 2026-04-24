@@ -113,4 +113,5 @@ export type WebviewToExtensionMessage =
   | { type: "toggleDebugMode"; enabled: boolean }
   | { type: "attachFile" }
   | { type: "removeAttachment"; sessionId: string; attachmentId: string }
-  | { type: "clearSessions" };
+  | { type: "clearSessions" }
+  | { type: "deleteSession"; sessionId: string };

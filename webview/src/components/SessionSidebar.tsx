@@ -9,6 +9,7 @@ interface SessionSidebarProps {
   onCreate: () => void;
   onSelect: (sessionId: string) => void;
   onClear: () => void;
+  onDelete: (sessionId: string) => void;
 }
 
 export function SessionSidebar({
@@ -16,7 +17,8 @@ export function SessionSidebar({
   activeSessionId,
   onCreate,
   onSelect,
-  onClear
+  onClear,
+  onDelete
 }: SessionSidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const activeSession = sessions.find(s => s.id === activeSessionId) || sessions[0];
@@ -59,14 +61,26 @@ export function SessionSidebar({
             {sessions.map((session) => {
               const isSelected = session.id === activeSessionId;
               return (
-                <button
+                <div
                   key={session.id}
                   className={`dropdown-item ${isSelected ? "selected" : ""}`}
                   onClick={() => { onSelect(session.id); setIsOpen(false); }}
                 >
-                  <span className="item-title">{session.title || "Untitled"}</span>
-                  <span className="item-meta">{new Date(session.updatedAt).toLocaleTimeString()}</span>
-                </button>
+                  <div className="item-content">
+                    <span className="item-title">{session.title || "Untitled"}</span>
+                    <span className="item-meta">{new Date(session.updatedAt).toLocaleTimeString()}</span>
+                  </div>
+                  <button 
+                    className="item-delete-btn" 
+                    title="Delete session"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDelete(session.id);
+                    }}
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
               );
             })}
           </div>

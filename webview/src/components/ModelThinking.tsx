@@ -26,7 +26,7 @@ export function ModelThinking({ content, isStreaming }: ModelThinkingProps) {
       <div className="thought-content-wrapper">
         <div className="thought-content">
           <ReactMarkdown remarkPlugins={[remarkGfm, remarkEmoji]}>
-            {content}
+            {content.replace(/\\n/g, '\n')}
           </ReactMarkdown>
         </div>
       </div>

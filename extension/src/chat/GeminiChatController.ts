@@ -84,6 +84,19 @@ export class GeminiChatController {
     });
   }
 
+  async deleteSession(sessionId: string): Promise<void> {
+    const active = await this.store.deleteSession(sessionId);
+    if (!active) return;
+    
+    this.post({
+      type: "sessionsCleared", // we can reuse sessionsCleared payload because it takes sessions and activeSessionId
+      payload: {
+        sessions: this.store.getSessions(),
+        activeSessionId: active.id
+      }
+    });
+  }
+
   async attachFromActiveEditor(): Promise<void> {
     const session = await this.ensureActiveSession();
     const attachment = await this.contextCollector.attachFromActiveEditor();
@@ -191,6 +204,9 @@ export class GeminiChatController {
         return;
       case "clearSessions":
         await this.clearSessions();
+        return;
+      case "deleteSession":
+        await this.deleteSession(message.sessionId);
         return;
       case "permissionResponse":
         this.handlePermissionResponse(message.requestId, message.value);

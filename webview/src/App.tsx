@@ -560,11 +560,13 @@ export default function App() {
             <stop offset="100%" stopColor="#8ab4f8" />
           </linearGradient>
         </defs>
-      </svg>      <SessionSidebar
+      </svg>
+      <SessionSidebar
         sessions={sessions}
         activeSessionId={activeSession?.id || ""}
         onCreate={() => postMessage({ type: "createSession" })}
         onClear={() => postMessage({ type: "clearSessions" })}
+        onDelete={(sessionId) => postMessage({ type: "deleteSession", sessionId })}
         onSelect={(sessionId) => {
           setActiveSessionId(sessionId);
           postMessage({ type: "switchSession", sessionId });

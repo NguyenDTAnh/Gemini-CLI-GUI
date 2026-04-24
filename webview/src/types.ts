@@ -115,4 +115,5 @@ export type WebviewToExtensionMessage =
   | { type: "attachFile" }
   | { type: "removeAttachment"; sessionId: string; attachmentId: string }
   | { type: "clearSessions" }
+  | { type: "deleteSession"; sessionId: string }
   | { type: "permissionResponse"; requestId: string; value: string };

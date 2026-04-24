@@ -266,12 +266,43 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   transform: translateY(-1.5px);
 }
 
+.item-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
+  flex: 1;
+}
+
+.item-delete-btn {
+  all: unset;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  color: var(--fg-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  opacity: 0;
+}
+
+.dropdown-item:hover .item-delete-btn {
+  opacity: 1;
+}
+
+.item-delete-btn:hover {
+  background-color: rgba(242, 184, 181, 0.1);
+  color: var(--danger);
+}
+
 .item-title {
   font-size: 13px;
   font-weight: 600;
   display: inline-block;
   width: fit-content;
-  max-width: 200px; /* Giới hạn để không đè lên meta */
+  max-width: 170px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

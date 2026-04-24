@@ -105,6 +105,21 @@ export class ChatSessionStore {
     return fresh;
   }
 
+  async deleteSession(sessionId: string): Promise<ChatSession | undefined> {
+    this.state.sessions = this.state.sessions.filter(s => s.id !== sessionId);
+    
+    if (this.state.sessions.length === 0) {
+      const fresh = this.newSession("General");
+      this.state.sessions = [fresh];
+      this.state.activeSessionId = fresh.id;
+    } else if (this.state.activeSessionId === sessionId) {
+      this.state.activeSessionId = this.state.sessions[0].id;
+    }
+    
+    await this.persist();
+    return this.getSession(this.state.activeSessionId);
+  }
+
   private newSession(title: string): ChatSession {
     const now = Date.now();
     return {
