@@ -15,11 +15,16 @@ export function PermissionRequest({ requestId, message, options }: PermissionReq
   const [selectedValue, setSelectedValue] = useState<string | null>(null);
 
   const handleResponse = (value: string) => {
-    if (responded) return;
+    console.log(`[Webview] handleResponse called for requestId: ${requestId} with value: ${value}`);
+    if (responded) {
+      console.log(`[Webview] Already responded to ${requestId}, ignoring.`);
+      return;
+    }
     
     setResponded(true);
     setSelectedValue(value);
     
+    console.log(`[Webview] Posting message permissionResponse for ${requestId}`);
     vscode.postMessage({
       type: "permissionResponse",
       requestId,

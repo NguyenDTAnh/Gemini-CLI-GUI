@@ -277,8 +277,10 @@ export function MessageItem({ message }: MessageItemProps) {
             const isHidden = (part.type === "progress" || part.type === "call") && (message.status === "cancelled" || message.status === "error");
             if (isHidden) return null;
 
+            const partKey = part.type === "permission" && part.data?.requestId ? part.data.requestId : idx;
+
             return (
-              <div key={idx} className={`message-bubble ${message.role} ${part.type}`}>
+              <div key={partKey} className={`message-bubble ${message.role} ${part.type}`}>
                 {part.type === "permission" ? (
                   <PermissionRequest {...part.data} />
                 ) : part.type === "loading" ? (

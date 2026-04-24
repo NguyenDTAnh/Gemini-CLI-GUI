@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { parseDiff, Diff, Hunk } from "react-diff-view";
 import { createTwoFilesPatch } from "diff";
-import { ChevronDown, ChevronRight, FileCode } from "lucide-react";
+import { Check, X } from "lucide-react";
 import "react-diff-view/style/index.css";
 import "./DiffBlockOverrides.css";
 
@@ -98,27 +98,36 @@ function DiffFileBlock({ file }: { file: FileStats }) {
 
   // Map diff type sang label hiển thị
   const typeLabel = file.type === "delete" ? "Deleted" : file.type === "add" ? "Created" : "Accepted";
+  const statusIcon = file.type === "delete" ? (
+    <X size={14} style={{ color: "var(--danger)" }} />
+  ) : file.type === "add" ? (
+    <Check size={14} style={{ color: "var(--ok)" }} />
+  ) : (
+    <Check size={14} style={{ color: "var(--ok)" }} />
+  );
 
   return (
     <div className={`diff-block ${isExpanded ? "expanded" : ""}`}>
       <button
-        className="diff-block-header"
+        className="diff-block-summary progress-status"
         onClick={() => setIsExpanded(!isExpanded)}
+        aria-expanded={isExpanded}
       >
-        <span className="diff-block-chevron">
-          {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+        <span className="progress-icon diff-block-status-icon">
+          {statusIcon}
         </span>
-        <FileCode size={11} className="diff-block-file-icon" />
-        <span className="diff-block-label">
-          Edit{" "}
-          <span className="diff-block-path" title={file.path}>
-            {file.path.split("/").pop()}
+        <span className="diff-block-summary-text progress-text">
+          <span className="diff-block-summary-main shiny-text">
+            <span className="diff-block-summary-action">Edit</span>
+            <span className="diff-block-path" title={file.path}>
+              {file.path.split("/").pop()}
+            </span>
+            <span className="diff-block-arrow">→</span>
+            <span className="diff-block-type">{typeLabel}</span>
           </span>
-          <span className="diff-block-arrow">→</span>
-          <span className="diff-block-type">{typeLabel}</span>
           <span className="diff-block-stats">
-            (<span className="add">+{file.additions}</span>,{" "}
-            <span className="del">-{file.deletions}</span>)
+            <span className="diff-block-stat add">+{file.additions}</span>
+            <span className="diff-block-stat del">-{file.deletions}</span>
           </span>
         </span>
       </button>

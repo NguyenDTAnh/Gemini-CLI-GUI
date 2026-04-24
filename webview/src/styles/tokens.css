@@ -539,7 +539,13 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
 }
 
 .message-bubble.assistant { background: transparent; padding-left: 0; max-width: 100%; width: fit-content; }
-.message-bubble.assistant.diff, .message-bubble.assistant.loading { width: 100%; padding: 0; background: transparent; border-radius: 8px; }
+.message-bubble.assistant.diff,
+.message-bubble.assistant.loading {
+  width: 100%;
+  padding: 0;
+  background: transparent;
+  border-radius: 8px;
+}
 .message-bubble.user { 
   color: var(--ink); 
   border-radius: 12px; 
@@ -1205,6 +1211,11 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   text-overflow: ellipsis;
 }
 
+.diff-block-summary-main.shiny-text {
+  flex: 1;
+  min-width: 0;
+}
+
 .composer-attachments { 
   display: flex; 
   flex-wrap: wrap; 
@@ -1421,13 +1432,13 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   width: 100%;
 }
 
-.diff-block-header {
+.diff-block-summary {
   all: unset;
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 2px 0;
+  gap: 6px;
+  padding: 2px 4px 2px 0;
   font-size: 11px;
   color: var(--muted);
   transition: color 0.2s;
@@ -1435,33 +1446,15 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   box-sizing: border-box;
   user-select: none;
 }
-.diff-block-header:hover { color: var(--ink); }
 
-.diff-block-chevron {
+.diff-block-summary:hover { color: var(--ink); }
+
+.diff-block-status-icon {
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  background: var(--gradient-primary) !important;
-  background-size: 200% 200% !important;
-  -webkit-background-clip: text !important;
-  background-clip: text !important;
-  -webkit-text-fill-color: transparent !important;
-  color: transparent !important;
-  animation: orb-bg-pan 4s infinite linear !important;
   opacity: 0.8;
-}
-
-.diff-block-file-icon {
-  flex-shrink: 0;
-  background: var(--gradient-primary) !important;
-  background-size: 200% 200% !important;
-  -webkit-background-clip: text !important;
-  background-clip: text !important;
-  -webkit-text-fill-color: transparent !important;
-  color: transparent !important;
-  animation: orb-bg-pan 4s infinite linear !important;
-  opacity: 0.7;
 }
 
 .diff-block-label {
@@ -1491,10 +1484,35 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   animation: shiny-text 3s infinite linear;
 }
 
+.diff-block-summary-text {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+  font-size: 11px;
+  flex-wrap: nowrap;
+}
+
+.diff-block-summary-main {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.diff-block-summary-action {
+  font-weight: 600;
+}
+
 .diff-block-path {
   font-weight: 600;
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  font-size: 10px;
+  font-size: 11px;
   max-width: 140px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1505,13 +1523,42 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   -webkit-text-fill-color: var(--ink) !important;
 }
 
-.diff-block-arrow { opacity: 0.4; font-size: 10px; -webkit-text-fill-color: var(--muted) !important; }
+.diff-block-arrow { opacity: 0.4; font-size: 11px; -webkit-text-fill-color: var(--muted) !important; }
 
-.diff-block-type { font-weight: 600; font-size: 10px; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+.diff-block-type { font-weight: 600; font-size: 11px; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
 
-.diff-block-stats { font-size: 10px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-.diff-block-stats .add { -webkit-text-fill-color: var(--ok) !important; }
-.diff-block-stats .del { -webkit-text-fill-color: var(--danger) !important; }
+.diff-block-stats {
+  font-size: 11px;
+  font-weight: 600;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: var(--muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none !important;
+  -webkit-text-fill-color: initial !important;
+}
+
+.diff-block-stat {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 0 1px 6px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.diff-block-stat.add {
+  color: var(--ok) !important;
+}
+
+.diff-block-stat.del {
+  color: var(--danger) !important;
+  padding-left: 0;
+}
 
 /* Animation collapse/expand dùng CSS grid (giống thought-content-wrapper) */
 .diff-block-content-wrapper {
@@ -1542,6 +1589,12 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   border: 1px solid rgba(255, 255, 255, 0.06);
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
 }
+
+.message-bubble.assistant.diff .diff-block-summary,
+.message-bubble.assistant.call .progress-status {
+  font-size: 11px;
+}
+
 
 .add { color: var(--ok) !important; }
 .del { color: var(--danger) !important; }
