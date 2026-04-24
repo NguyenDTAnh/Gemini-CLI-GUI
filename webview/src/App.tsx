@@ -123,6 +123,25 @@ export default function App() {
   const [globalDragging, setGlobalDragging] = useState(false);
   const dragCounter = useRef(0);
 
+  useEffect(() => {
+    // Add global native event listeners to aggressively prevent VS Code's default behavior
+    // which normally intercepts file drops from the Explorer to open them in an editor tab.
+    const preventDefault = (e: DragEvent) => {
+      e.preventDefault();
+      if (e.type === 'dragover' && e.dataTransfer) {
+        e.dataTransfer.dropEffect = 'copy';
+      }
+    };
+
+    window.addEventListener('dragover', preventDefault, false);
+    window.addEventListener('drop', preventDefault, false);
+
+    return () => {
+      window.removeEventListener('dragover', preventDefault, false);
+      window.removeEventListener('drop', preventDefault, false);
+    };
+  }, []);
+
   const handleGlobalDragEnter = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -163,9 +182,20 @@ export default function App() {
     // Parse extra metadata/paths from dataTransfer, but filter out what we already got from files
     const uriPayloads = parseDroppedPathPayloads(e.dataTransfer);
     
+    for (const fp of filePayloads) {
+      if (!fp.fsPath) {
+        const matchingUri = uriPayloads.find(up => up.name === fp.name);
+        if (matchingUri) {
+          fp.fsPath = matchingUri.fsPath;
+          fp.uri = matchingUri.uri;
+        }
+      }
+    }
+    
     // Build a set of paths we already have from binary file analysis
     const existingPaths = new Set(filePayloads.map(p => p.fsPath).filter(Boolean));
-    const filteredUriPayloads = uriPayloads.filter(p => !existingPaths.has(p.fsPath));
+    const existingNames = new Set(filePayloads.map(p => p.name).filter(Boolean));
+    const filteredUriPayloads = uriPayloads.filter(p => !existingPaths.has(p.fsPath) && !existingNames.has(p.name));
 
     const payloads = [...filePayloads, ...filteredUriPayloads];
 

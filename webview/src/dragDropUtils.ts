@@ -147,14 +147,23 @@ export function parseDroppedPathPayloads(dataTransfer: DataTransfer): DroppedFil
     .filter((item) => item && !item.startsWith("#"));
 
   const payloads: DroppedFilePayload[] = [];
+  const seenNames = new Set<string>();
+
   for (const line of lines) {
+    let name = "";
+    let payload: DroppedFilePayload | null = null;
+
     if (line.startsWith("file://")) {
-      payloads.push({ name: getNameFromUri(line), uri: line });
-      continue;
+      name = getNameFromUri(line);
+      payload = { name, uri: line };
+    } else if (line.startsWith("/")) {
+      name = line.split("/").pop() || line;
+      payload = { name, fsPath: line };
     }
 
-    if (line.startsWith("/")) {
-      payloads.push({ name: line.split("/").pop() || line, fsPath: line });
+    if (payload && !seenNames.has(name)) {
+      seenNames.add(name);
+      payloads.push(payload);
     }
   }
 

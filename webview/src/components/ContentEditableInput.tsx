@@ -386,6 +386,10 @@ export const ContentEditableInput = forwardRef<ContentEditableInputHandle, Conte
         onBlur={() => {
           setTimeout(() => setSuggestionState(null), 200);
         }}
+        onDrop={(e) => {
+          // Prevent browser from natively inserting dropped file paths as text
+          e.preventDefault();
+        }}
         data-placeholder={placeholder}
       />
       
