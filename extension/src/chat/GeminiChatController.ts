@@ -560,6 +560,7 @@ export class GeminiChatController {
     session.updatedAt = Date.now();
     await this.store.upsertSession(session);
     this.post({ type: "sessionUpdated", session });
+    this.post({ type: "agentUpdated", sessionId: session.id, agentId: nextAgent });
   }
 
   private async setMode(sessionId: string, mode: ChatMode): Promise<void> {

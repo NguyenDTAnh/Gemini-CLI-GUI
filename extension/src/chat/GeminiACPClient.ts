@@ -44,8 +44,8 @@ class NDJsonMessageReader implements MessageReader {
       try {
         const msg = JSON.parse(trimmed) as Message;
         this._onData.fire(msg);
-      } catch (e) {
-        // Not a JSON message, ignore or log
+      } catch {
+        // Not a JSON message, ignore
       }
     });
 
@@ -181,7 +181,7 @@ export class GeminiACPClient {
               const parsed = JSON.parse(text);
               text = parsed.query || parsed.thought || text;
             }
-          } catch (e) {}
+          } catch { /* JSON parse fallback, giữ text gốc */ }
           this.callbacks.onChunk(text);
         }
       } else if (update.sessionUpdate === "tool_call") {
@@ -208,12 +208,10 @@ export class GeminiACPClient {
         console.log("[ACP] Available commands updated:", update.availableCommands?.length);
         // Tạm thời chưa cần hiển thị ra UI nhưng không báo unhandled nữa
       } else {
-        // Fallback for other potential updates
-        console.log("[ACP] Other update:", JSON.stringify(update, null, 2));
+        // Fallback for other potential updates — log chi tiết để debug diff/file edit data
+        console.log(`[ACP] Unhandled sessionUpdate: ${update.sessionUpdate}`, JSON.stringify(update, null, 2));
         if (update.content?.type === "text" && update.content?.text) {
           this.callbacks.onChunk(update.content.text);
-        } else if (update.sessionUpdate) {
-          console.log(`[ACP] Received unhandled sessionUpdate: ${update.sessionUpdate}`, update);
         }
       }
     });
@@ -225,13 +223,33 @@ export class GeminiACPClient {
       const title = tc?.title || tc?.name || tc?.id || params.message || "Agent wants to perform an action";
       const options = params.options || [];
 
+      // Extract diff data từ file_edit_details nếu có (ACP FileDiff protocol)
+      const fileEdit = params.file_edit_details || params.fileEditDetails || tc?.file_edit_details || tc?.fileEditDetails;
+      let diffText: string | undefined;
+      if (fileEdit) {
+        if (fileEdit.formatted_diff || fileEdit.formattedDiff) {
+          diffText = fileEdit.formatted_diff || fileEdit.formattedDiff;
+        } else if (fileEdit.old_content != null && fileEdit.new_content != null) {
+          // Fallback: tạo simple context từ old/new content
+          const fileName = fileEdit.file_name || fileEdit.fileName || fileEdit.file_path || fileEdit.filePath || "unknown";
+          diffText = `--- a/${fileName}\n+++ b/${fileName}\n`;
+        }
+      }
+
       // Gửi request xuống webview thay vì hiện popup
-      console.log(`[ACP] Requesting permission: ${title} (requestId: ${requestId})`);
-      this.callbacks.onChunk(`\n<permission_request>${JSON.stringify({
+      console.log(`[ACP] Requesting permission: ${title} (requestId: ${requestId})`, fileEdit ? `[has diff: ${!!diffText}]` : "[no file edit]");
+      const permissionData: any = {
         requestId,
         message: title,
         options: options.map((o: any) => ({ label: o.name, value: o.optionId }))
-      })}</permission_request>\n`);
+      };
+      if (diffText) {
+        permissionData.diffText = diffText;
+      }
+      if (fileEdit) {
+        permissionData.filePath = fileEdit.file_path || fileEdit.filePath || fileEdit.file_name || fileEdit.fileName;
+      }
+      this.callbacks.onChunk(`\n<permission_request>${JSON.stringify(permissionData)}</permission_request>\n`);
 
       // Chờ phản hồi từ webview thông qua cơ chế event-driven hoặc await (cần cách xử lý async)
       // Hiện tại do kiến trúc ACP, anh sẽ tạm dùng một promise để chờ

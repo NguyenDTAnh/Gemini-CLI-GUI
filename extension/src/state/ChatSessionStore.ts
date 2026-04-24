@@ -16,13 +16,28 @@ export class ChatSessionStore {
 
   constructor(private readonly context: vscode.ExtensionContext) {
     this.state = this.readState();
-    this.state.sessions = this.state.sessions.map((session) => this.ensureDefaultAgent(session));
-    this.state.sessions = this.state.sessions.map((session) => this.ensureDefaultMode(session));
+    
+    let needsPersist = false;
+    this.state.sessions = this.state.sessions.map((session) => {
+      const fixed = this.ensureDefaultAgent(session);
+      if (fixed !== session) needsPersist = true;
+      return fixed;
+    });
+    this.state.sessions = this.state.sessions.map((session) => {
+      const fixed = this.ensureDefaultMode(session);
+      if (fixed !== session) needsPersist = true;
+      return fixed;
+    });
 
     if (this.state.sessions.length === 0) {
       const initial = this.newSession("General");
       this.state.sessions = [initial];
       this.state.activeSessionId = initial.id;
+      needsPersist = true;
+    }
+
+    if (needsPersist) {
+      void this.persist();
     }
   }
 

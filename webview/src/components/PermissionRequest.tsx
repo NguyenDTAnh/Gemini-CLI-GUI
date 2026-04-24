@@ -1,14 +1,17 @@
 import React, { useState } from "react";
 import { Check, X, Terminal } from "lucide-react";
 import { vscode } from "../vscode";
+import { DiffBlock } from "./DiffBlock";
 
 interface PermissionRequestProps {
   requestId: string;
   message: string;
   options: Array<{ label: string; value: string }>;
+  diffText?: string;
+  filePath?: string;
 }
 
-export function PermissionRequest({ requestId, message, options }: PermissionRequestProps) {
+export function PermissionRequest({ requestId, message, options, diffText }: PermissionRequestProps) {
   const [responded, setResponded] = useState(false);
   const [selectedValue, setSelectedValue] = useState<string | null>(null);
 
@@ -73,6 +76,7 @@ export function PermissionRequest({ requestId, message, options }: PermissionReq
       <div className="permission-message">
         {renderMessage()}
       </div>
+      {diffText && <DiffBlock diffText={diffText} />}
       {!responded && (
         <div className="permission-actions">
           {options.map((option) => (

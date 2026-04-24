@@ -92,6 +92,7 @@ export type ExtensionToWebviewMessage =
   | { type: "composerPrefill"; sessionId: string; text: string; append?: boolean; contextChip?: { display: string; content: string; languageId: string }; contextChips?: Array<{ display: string; content?: string; languageId?: string; type: 'mention' | 'snippet'; id?: string }> }
   | { type: "fileSearchResults"; query: string; suggestions: string[] }
   | { type: "modelUpdated"; sessionId: string; modelId: string }
+  | { type: "agentUpdated"; sessionId: string; agentId: string }
   | { type: "modeUpdated"; sessionId: string; mode: ChatMode }
   | { type: "debugModeToggled"; enabled: boolean }
   | { type: "info"; message: string }

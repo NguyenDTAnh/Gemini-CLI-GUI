@@ -328,6 +328,20 @@ export default function App() {
           );
           return;
         }
+        case "agentUpdated": {
+          setSessions((prev) =>
+            prev.map((session) =>
+              session.id === message.sessionId
+                ? {
+                    ...session,
+                    defaultAgentId: message.agentId || undefined,
+                    updatedAt: Date.now()
+                  }
+                : session
+            )
+          );
+          return;
+        }
         case "modeUpdated": {
           setSessions((prev) =>
             prev.map((session) =>

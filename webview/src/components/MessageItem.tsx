@@ -183,16 +183,17 @@ export function MessageItem({ message }: MessageItemProps) {
             }
 
             // Merge với call segment liền trước đó nếu cùng tool name
-            const rest = lines.slice(1).join('\n').trim();
-            const fullContent = rest ? `${callContent}\n${rest}` : callContent;
-
+            const rest = lines.slice(1).join('\n');
             const last = segments[segments.length - 1];
-            if (last && last.type === "call") {
+            if (last && last.type === "call" && last.content.split('\n')[0] === callContent) {
               // Cập nhật status và content của last (giữ lại 1 bubble duy nhất)
-              last.content = fullContent;
               last.callStatus = callStatus;
             } else {
-              segments.push({ type: "call", content: fullContent, callStatus });
+              segments.push({ type: "call", content: callContent, callStatus });
+            }
+
+            if (rest.trim()) {
+              segments.push({ type: "text", content: rest });
             }
           } else if (s.startsWith("[Subagent:") || s.startsWith("<subagent")) {
             const lines = s.trim().split('\n');
