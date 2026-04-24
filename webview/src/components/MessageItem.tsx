@@ -64,38 +64,63 @@ export function MessageItem({ message }: MessageItemProps) {
     if (content) {
       if (isAssistant) {
         // Regex chỉ cắt ở đầu các khối đặc biệt để đảm bảo tính ổn định khi streaming
-        const regex = /(?=diff --git|--- [ai]\/|\[Subagent:|<subagent |<thought>|<think>|> call:|\[Tool:|\s*<permission_request>|<div class="permission-confirmed">)/g;
+        const regex = /(?=diff --git|--- [ai]\/|\[Subagent:|<subagent |<thought>|<think>|> call:|\[Tool:|\s*<permission_request>|<file_diff>|<div class="permission-confirmed">)/g;
+        if (content.includes("<file_diff>")) {
+          console.log("🔵 [Webview] content contains <file_diff> tag, length=", content.length);
+        }
         const splitSegments = content.split(regex);
         
         splitSegments.filter(s => s.trim()).forEach(s => {
           const trimmed = s.trim();
           
           if (trimmed.startsWith("<permission_request>")) {
+            console.log("Webview detected permission_request tag:", trimmed);
             try {
               const startTag = "<permission_request>";
               const endTag = "</permission_request>";
-              const startIndex = trimmed.indexOf(startTag);
-              const endIndex = trimmed.indexOf(endTag);
+              const startIndex = s.indexOf(startTag);
+              const endIndex = s.indexOf(endTag);
               
               if (endIndex !== -1) {
-                const jsonPart = trimmed.substring(startIndex + startTag.length, endIndex);
+                const jsonPart = s.substring(startIndex + startTag.length, endIndex);
                 const data = JSON.parse(jsonPart);
                 segments.push({ type: "permission", content: "", data });
                 
-                const extra = trimmed.substring(endIndex + endTag.length);
+                const extra = s.substring(endIndex + endTag.length);
                 if (extra.trim()) {
+                  // Đệ quy nhẹ hoặc xử lý tiếp text còn thừa
                   segments.push({ type: "text", content: extra });
                 }
               } else {
-                // Nếu chưa thấy tag đóng, có thể đang streaming (không render JSON thô)
-                if (message.status === "streaming") {
-                   // Để trống hoặc hiện placeholder nhẹ nhàng
-                } else {
-                   segments.push({ type: "text", content: s });
+                // Nếu chưa thấy tag đóng nhưng message đã done, hoặc status là streaming
+                // Ta vẫn cố gắng parse nếu JSON có vẻ đã hoàn thiện (ít xảy ra vì ACP gửi trọn gói)
+                if (message.status !== "streaming") {
+                    segments.push({ type: "text", content: s });
                 }
               }
             } catch (e) {
               console.error("Failed to parse permission request segment", e);
+              segments.push({ type: "text", content: s });
+            }
+          } else if (trimmed.startsWith("<file_diff>")) {
+            console.log("🟠 [Webview] Found <file_diff> segment, trimmed length=", trimmed.length);
+            try {
+              const endTag = "</file_diff>";
+              const endIdx = trimmed.indexOf(endTag);
+              console.log("🟠 [Webview] endTag index=", endIdx);
+              if (endIdx !== -1) {
+                const json = trimmed.substring("<file_diff>".length, endIdx);
+                console.log("🟠 [Webview] extracted JSON length=", json.length, "first100=", json.substring(0, 100));
+                const data = JSON.parse(json);
+                console.log("🟣 [Webview] Diff segment CREATED: path=", data.path, "oldLen=", data.oldText?.length, "newLen=", data.newText?.length);
+                segments.push({ type: "diff", content: "", data });
+                const extra = trimmed.substring(endIdx + endTag.length).trim();
+                if (extra) segments.push({ type: "text", content: extra });
+              } else {
+                console.warn("🔴 [Webview] </file_diff> NOT FOUND in segment");
+              }
+            } catch (e) {
+              console.error("🔴 [Webview] Failed to parse <file_diff> JSON:", e);
               segments.push({ type: "text", content: s });
             }
           } else if (trimmed.startsWith("diff --git") || trimmed.startsWith("---")) {
@@ -263,7 +288,7 @@ export function MessageItem({ message }: MessageItemProps) {
                     <div className="shimmer-line" style={{ width: '40%' }}></div>
                   </div>
                 ) : part.type === "diff" ? (
-                  <DiffBlock diffText={part.content} />
+                  <DiffBlock diffText={part.content} fileDiffData={part.data} />
                 ) : part.type === "thought" ? (
                   <ModelThinking content={part.content} isStreaming={message.status === "streaming"} />
                 ) : (part.type === "call" || part.type === "progress") ? (

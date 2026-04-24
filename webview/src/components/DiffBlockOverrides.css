@@ -1,0 +1,21 @@
+.diff-container {
+  --diff-font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 11px;
+}
+
+.diff-container .diff,
+.diff-container .diff-line,
+.diff-container .diff-code,
+.diff-container .diff-decoration-content,
+.diff-container .diff-gutter {
+  font-family: var(--diff-font-family) !important;
+}
+
+.diff-container .diff-line,
+.diff-container .diff-code,
+.diff-container .diff-code * {
+  white-space: pre-wrap !important;
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+  word-wrap: normal !important;
+}

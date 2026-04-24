@@ -44,8 +44,8 @@ class NDJsonMessageReader implements MessageReader {
       try {
         const msg = JSON.parse(trimmed) as Message;
         this._onData.fire(msg);
-      } catch {
-        // Not a JSON message, ignore
+      } catch (e) {
+        console.log(`[ACP CLI Raw Output] ${trimmed}`);
       }
     });
 
@@ -152,7 +152,13 @@ export class GeminiACPClient {
 
     this.connection = createMessageConnection(reader, writer);
 
+    // Logger cho tất cả các request để debug protocol
+    this.connection.onRequest((method, params) => {
+      console.log(`[ACP] Incoming Request: ${method}`, JSON.stringify(params, null, 2));
+    });
+
     // Register Notification Handlers for streaming and tool calls
+    console.log("🔥🔥🔥 [ACP] NEW CODE LOADED - session/update handler registered 🔥🔥🔥");
     this.connection.onNotification("session/update", (params: any) => {
       const update = params?.update;
       if (!update) return;
@@ -185,15 +191,37 @@ export class GeminiACPClient {
           this.callbacks.onChunk(text);
         }
       } else if (update.sessionUpdate === "tool_call") {
-        console.log("[ACP] tool_call update:", JSON.stringify(update, null, 2));
         const tc = update.toolCall;
         const toolName = tc?.name || tc?.title || tc?.id || update.title || "Executing...";
+        const contentLen = Array.isArray(update.content) ? update.content.length : 0;
+        console.log(`[ACP] tool_call: "${update.title}" status=${update.status} kind=${update.kind} contentLen=${contentLen}`);
+        if (contentLen > 0) {
+          for (const c of update.content) {
+            console.log(`[ACP] tool_call content item: type=${c.type} keys=${Object.keys(c)}`);
+          }
+        }
         this.callbacks.onChunk(`\n[Tool: ${toolName}]\n`);
+        // Extract diff từ tool_call content[] (có thể chứa diff khi completed)
+        this.emitDiffFromContent(update.content);
       } else if (update.sessionUpdate === "tool_call_update") {
-        console.log("[ACP] tool_call_update:", JSON.stringify(update, null, 2));
         const status = update.status === "completed" ? "Done" : update.status;
         const toolName = update.title || update.toolCall?.name || update.toolCall?.title || "Task";
+        // Debug: ALWAYS log tool_call_update
+        const contentLen = Array.isArray(update.content) ? update.content.length : 0;
+        console.log(`[ACP] tool_call_update: "${toolName}" status=${update.status} contentLen=${contentLen} keys=${Object.keys(update)}`);
+        if (contentLen > 0) {
+          for (const c of update.content) {
+            console.log(`[ACP] content item: type=${c.type} keys=${Object.keys(c)} hasOldText=${!!c.oldText} hasNewText=${!!c.newText} hasOld_text=${!!c.old_text} hasNew_text=${!!c.new_text}`);
+          }
+        }
         this.callbacks.onChunk(`\n[Tool: ${toolName} - ${status}]\n`);
+        console.log(`🟡 [ACP] About to call emitDiffFromContent, contentLen=${contentLen}`);
+        try {
+          this.emitDiffFromContent(update.content);
+          console.log(`🟡 [ACP] emitDiffFromContent call completed`);
+        } catch (err) {
+          console.error(`🔴 [ACP] emitDiffFromContent THREW:`, err);
+        }
       } else if (update.sessionUpdate === "agent_thought") {
         if (update.content?.type === "text" && update.content?.text) {
           if (!this.inThoughtBlock) {
@@ -218,7 +246,15 @@ export class GeminiACPClient {
 
     // Handle incoming JSON-RPC Requests from Server (Permission Prompts)
     this.connection.onRequest("session/request_permission", async (params: any) => {
+      console.log(">>>> [DEBUG] RECEIVED PERMISSION REQUEST FROM ACP CLI:", JSON.stringify(params, null, 2));
       const requestId = randomUUID();
+      
+      // Nếu đang ở trong thought block, phải đóng nó lại trước khi hiện permission
+      if (this.inThoughtBlock) {
+        this.callbacks.onChunk("\n</thought>\n");
+        this.inThoughtBlock = false;
+      }
+
       const tc = params.toolCall;
       const title = tc?.title || tc?.name || tc?.id || params.message || "Agent wants to perform an action";
       const options = params.options || [];
@@ -226,6 +262,8 @@ export class GeminiACPClient {
       // Extract diff data từ file_edit_details nếu có (ACP FileDiff protocol)
       const fileEdit = params.file_edit_details || params.fileEditDetails || tc?.file_edit_details || tc?.fileEditDetails;
       let diffText: string | undefined;
+      let filePath: string | undefined;
+      
       if (fileEdit) {
         if (fileEdit.formatted_diff || fileEdit.formattedDiff) {
           diffText = fileEdit.formatted_diff || fileEdit.formattedDiff;
@@ -234,25 +272,32 @@ export class GeminiACPClient {
           const fileName = fileEdit.file_name || fileEdit.fileName || fileEdit.file_path || fileEdit.filePath || "unknown";
           diffText = `--- a/${fileName}\n+++ b/${fileName}\n`;
         }
+        filePath = fileEdit.file_path || fileEdit.filePath || fileEdit.file_name || fileEdit.fileName;
+      } else if (tc?.content && Array.isArray(tc.content)) {
+        // Fallback: Tìm diff trong toolCall.content (ACP ToolCall protocol)
+        const diffItem = tc.content.find((c: any) => c.type === 'diff');
+        if (diffItem) {
+          diffText = diffItem.formatted_diff || diffItem.formattedDiff;
+          if (!diffText && diffItem.oldText !== undefined && diffItem.newText !== undefined) {
+             diffText = `FILE: ${diffItem.path}\n<<<< OLD\n${diffItem.oldText}\n==== NEW\n${diffItem.newText}\n>>>>`;
+          }
+          filePath = diffItem.path;
+        }
       }
 
       // Gửi request xuống webview thay vì hiện popup
-      console.log(`[ACP] Requesting permission: ${title} (requestId: ${requestId})`, fileEdit ? `[has diff: ${!!diffText}]` : "[no file edit]");
+      console.log(`[ACP] Requesting permission: ${title} (requestId: ${requestId})`, diffText ? `[has diff]` : "[no diff]");
       const permissionData: any = {
         requestId,
         message: title,
         options: options.map((o: any) => ({ label: o.name, value: o.optionId }))
       };
-      if (diffText) {
-        permissionData.diffText = diffText;
-      }
-      if (fileEdit) {
-        permissionData.filePath = fileEdit.file_path || fileEdit.filePath || fileEdit.file_name || fileEdit.fileName;
-      }
+      if (diffText) permissionData.diffText = diffText;
+      if (filePath) permissionData.filePath = filePath;
+      
       this.callbacks.onChunk(`\n<permission_request>${JSON.stringify(permissionData)}</permission_request>\n`);
 
       // Chờ phản hồi từ webview thông qua cơ chế event-driven hoặc await (cần cách xử lý async)
-      // Hiện tại do kiến trúc ACP, anh sẽ tạm dùng một promise để chờ
       return new Promise((resolve) => {
         // Cần lưu requestId này vào một map để handle callback khi webview gửi về
         // Tạm thời anh sẽ mock việc resolve này dựa trên message từ webview sau
@@ -321,6 +366,19 @@ export class GeminiACPClient {
       console.log(`[ACP] Session model updated to: ${modelId}`);
     } catch (e) {
       console.error("Failed to set session model", e);
+    }
+  }
+
+  private emitDiffFromContent(content: any): void {
+    if (!Array.isArray(content)) return;
+    for (const item of content) {
+      if (item?.type === "diff" && item.path) {
+        const oldText = item.oldText ?? item.old_text ?? "";
+        const newText = item.newText ?? item.new_text ?? "";
+        const payload = JSON.stringify({ path: item.path, oldText, newText });
+        console.log(`🟢 [ACP] EMIT <file_diff> path=${item.path} oldLen=${oldText.length} newLen=${newText.length} payloadLen=${payload.length}`);
+        this.callbacks.onChunk(`\n<file_diff>${payload}</file_diff>\n`);
+      }
     }
   }
 

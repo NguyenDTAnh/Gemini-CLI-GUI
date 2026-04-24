@@ -487,20 +487,16 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
 .avatar-box {
   width: 16px;
   height: 16px;
-  border-radius: 50%;
-  background: var(--bg-2);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  border: 1px solid rgba(168, 199, 250, 0.1);
 }
 
 .avatar-box svg {
   display: block;
 }
 
-.message-row.user .avatar-box { background: #a8c7fa !important; }
 .message-row.user .avatar-box svg { 
   color: var(--bg-0) !important;
 }
@@ -1362,9 +1358,18 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
 }
 
 /* Diff Viewer Styles */
-.diff-container { margin: 0; border-radius: 6px; overflow: hidden; border: 1px solid var(--line); background: #000; font-family: 'SF Mono', Monaco, Consolas, monospace; font-size: 10px; }
+.diff-container {
+  margin: 0;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: #000;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 11px;
+  --diff-font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
 .diff-file-header { padding: 4px 8px; background: var(--bg-1); border-bottom: 1px solid var(--line); font-size: 10px; color: var(--muted); font-weight: 600; }
-.diff-file .diff { font-size: 10px; }
+.diff-file .diff { font-size: 11px; }
 .diff-hunk-header { background: rgba(168, 199, 250, 0.05) !important; color: #a8c7fa !important; padding: 2px 8px !important; font-size: 10px !important; }
 .diff-code-insert { background: rgba(109, 213, 140, 0.1) !important; }
 .diff-code-delete { background: rgba(242, 184, 181, 0.1) !important; }
@@ -1372,6 +1377,35 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
 .diff-gutter-delete { background: rgba(242, 184, 181, 0.15) !important; color: var(--danger) !important; }
 .diff-gutter { border-right: 1px solid var(--line) !important; }
 .diff-code { color: var(--ink) !important; }
+.diff-file .diff,
+.diff-file .diff * {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+}
+
+.diff-file .diff-line,
+.diff-file .diff-gutter,
+.diff-file .diff-code,
+.diff-file .diff-decoration-content {
+  font-family: var(--diff-font-family) !important;
+}
+
+.diff-file .diff-line,
+.diff-file .diff-code {
+  white-space: pre-wrap !important;
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+}
+
+.diff-file .diff-code {
+  word-wrap: normal !important;
+}
+
+.diff-file .diff td,
+.diff-file .diff pre,
+.diff-file .diff code,
+.diff-file .diff span {
+  font-family: inherit !important;
+}
 
 /* Diff Block - Collapsible Inline Diff (pattern giống thought-block) */
 .diff-block-group { display: flex; flex-direction: column; gap: 2px; width: 100%; }
@@ -1434,6 +1468,7 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   display: flex;
   align-items: center;
   gap: 3px;
+  font-family: inherit;
   font-weight: 700;
   font-size: 10px;
   letter-spacing: 0.05em;
@@ -1458,7 +1493,7 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
 
 .diff-block-path {
   font-weight: 600;
-  font-family: 'SF Mono', Monaco, Consolas, monospace;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   font-size: 10px;
   max-width: 140px;
   overflow: hidden;
@@ -1472,9 +1507,9 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
 
 .diff-block-arrow { opacity: 0.4; font-size: 10px; -webkit-text-fill-color: var(--muted) !important; }
 
-.diff-block-type { font-weight: 600; font-size: 10px; }
+.diff-block-type { font-weight: 600; font-size: 10px; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
 
-.diff-block-stats { font-size: 10px; font-weight: 600; }
+.diff-block-stats { font-size: 10px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
 .diff-block-stats .add { -webkit-text-fill-color: var(--ok) !important; }
 .diff-block-stats .del { -webkit-text-fill-color: var(--danger) !important; }
 
@@ -1566,6 +1601,10 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   background-clip: text;
   -webkit-text-fill-color: transparent;
   animation: shiny-text 2.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.static-shiny-text {
+  color: rgba(168, 199, 250, 0.4);
 }
 
 @keyframes shiny-text {

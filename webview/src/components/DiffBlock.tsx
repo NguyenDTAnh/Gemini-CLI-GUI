@@ -1,10 +1,19 @@
 import { useMemo, useState } from "react";
 import { parseDiff, Diff, Hunk } from "react-diff-view";
+import { createTwoFilesPatch } from "diff";
 import { ChevronDown, ChevronRight, FileCode } from "lucide-react";
 import "react-diff-view/style/index.css";
+import "./DiffBlockOverrides.css";
+
+interface FileDiffData {
+  path: string;
+  oldText: string;
+  newText: string;
+}
 
 interface DiffBlockProps {
   diffText: string;
+  fileDiffData?: FileDiffData;
 }
 
 interface FileStats {
@@ -20,10 +29,44 @@ interface FileStats {
  * Render mỗi file thay đổi thành 1 block riêng, collapse/expand giống thought-block
  * Hỗ trợ multiple files trong cùng 1 diff text
  */
-export function DiffBlock({ diffText }: DiffBlockProps) {
+export function DiffBlock({ diffText, fileDiffData }: DiffBlockProps) {
+  const resolvedDiff = useMemo(() => {
+    if (fileDiffData?.path) {
+      try {
+        const name = fileDiffData.path.split("/").pop() || fileDiffData.path;
+        const rawPatch = createTwoFilesPatch(
+          `a/${name}`, `b/${name}`,
+          fileDiffData.oldText, fileDiffData.newText,
+          "", "", { context: 3 }
+        );
+        // react-diff-view parseDiff yêu cầu header `diff --git` và không hiểu dòng `===`
+        // Strip dòng `===` và prepend git header để parseDiff hoạt động đúng
+        const cleaned = rawPatch
+          .split("\n")
+          .filter(line => !/^={3,}$/.test(line.trim()))
+          .join("\n");
+        const patch = `diff --git a/${name} b/${name}\n${cleaned}`;
+        console.log("🔶 [DiffBlock] patch output length=", patch.length, "first300=", patch.substring(0, 300));
+        return patch;
+      } catch (e) {
+        console.error("🔴 [DiffBlock] createTwoFilesPatch failed:", e);
+        return "";
+      }
+    }
+    return diffText;
+  }, [diffText, fileDiffData]);
+
   const fileStats = useMemo<FileStats[]>(() => {
+    if (!resolvedDiff) {
+      console.log("🔶 [DiffBlock] resolvedDiff empty, returning []");
+      return [];
+    }
     try {
-      const files = parseDiff(diffText);
+      const files = parseDiff(resolvedDiff);
+      console.log("🔶 [DiffBlock] parseDiff result — files.length=", files.length, "first file keys=", files[0] ? Object.keys(files[0]) : "none");
+      if (files[0]) {
+        console.log("🔶 [DiffBlock] first file: oldPath=", files[0].oldPath, "newPath=", files[0].newPath, "type=", files[0].type, "hunks.length=", files[0].hunks?.length);
+      }
       return files.map((file) => {
         let additions = 0;
         let deletions = 0;
@@ -41,10 +84,11 @@ export function DiffBlock({ diffText }: DiffBlockProps) {
           hunks: file.hunks,
         };
       });
-    } catch {
+    } catch (e) {
+      console.error("🔴 [DiffBlock] parseDiff failed:", e);
       return [];
     }
-  }, [diffText]);
+  }, [resolvedDiff]);
 
   if (fileStats.length === 0) return null;
 
