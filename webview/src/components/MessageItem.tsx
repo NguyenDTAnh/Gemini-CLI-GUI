@@ -1,4 +1,4 @@
-import { User, Loader2 } from "lucide-react";
+import { User, Loader2, Check, X } from "lucide-react";
 import { GeminiLogo } from "./GeminiLogo";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -23,7 +23,8 @@ export function MessageItem({ message }: MessageItemProps) {
 
   const parts = useMemo(() => {
     const content = message.content || "";
-    const segments: { type: "text" | "diff" | "progress" | "loading" | "permission" | "thought" | "call"; content: string; data?: any }[] = [];
+    type Segment = { type: "text" | "diff" | "progress" | "loading" | "permission" | "thought" | "call"; content: string; data?: any; callStatus?: "pending" | "success" | "error" };
+    const segments: Segment[] = [];
 
     if (content) {
       if (isAssistant) {
@@ -96,12 +97,37 @@ export function MessageItem({ message }: MessageItemProps) {
           } else if (trimmed.startsWith("> call:") || trimmed.startsWith("[Tool:")) {
             const lines = s.trim().split('\n');
             const firstLine = lines[0].trim();
-            const callContent = firstLine.startsWith("> call:") 
-              ? firstLine.replace("> call:", "").trim() 
+            let callContent = firstLine.startsWith("> call:")
+              ? firstLine.replace("> call:", "").trim()
               : firstLine.replace("[Tool:", "").replace("]", "").trim();
-            
-            segments.push({ type: "call", content: callContent });
-            
+
+            let callStatus: Segment["callStatus"] = "pending";
+            const statusMatch = callContent.match(/\s+-\s+(Done|completed|Failed|error|Cancelled|cancelled)$/i);
+            if (statusMatch) {
+              const statusRaw = statusMatch[1].toLowerCase();
+              if (statusRaw === "done" || statusRaw === "completed") {
+                callStatus = "success";
+              } else if (statusRaw === "failed" || statusRaw === "error" || statusRaw === "cancelled") {
+                callStatus = "error";
+              }
+              callContent = callContent.substring(0, statusMatch.index).trim();
+            }
+
+            // Nếu message bị cancelled thì tất cả call đều là error
+            if (message.status === "cancelled") {
+              callStatus = "error";
+            }
+
+            // Merge với call segment liền trước đó nếu cùng tool name
+            const last = segments[segments.length - 1];
+            if (last && last.type === "call") {
+              // Cập nhật status và content của last (giữ lại 1 bubble duy nhất)
+              last.content = callContent;
+              last.callStatus = callStatus;
+            } else {
+              segments.push({ type: "call", content: callContent, callStatus });
+            }
+
             const rest = lines.slice(1).join('\n');
             if (rest.trim()) {
               segments.push({ type: "text", content: rest });
@@ -160,8 +186,9 @@ export function MessageItem({ message }: MessageItemProps) {
         
         <div className="bubble-stack">
           {parts.map((part, idx) => {
-            const isProgressHidden = (part.type === "progress" || part.type === "call") && message.status === "complete";
-            if (isProgressHidden) return null;
+            // Ẩn progress/call bubbles khi message bị cancelled (dọn dẹp UI)
+            const isHidden = (part.type === "progress" || part.type === "call") && (message.status === "cancelled" || message.status === "error");
+            if (isHidden) return null;
 
             return (
               <div key={idx} className={`message-bubble ${message.role} ${part.type}`}>
@@ -180,34 +207,26 @@ export function MessageItem({ message }: MessageItemProps) {
                 ) : (part.type === "call" || part.type === "progress") ? (
                   <div className="progress-status">
                     <span className="progress-icon">
-                      <Loader2 size={14} className="spin-icon" />
+                      {part.type === "call" && part.callStatus === "success" ? (
+                        <Check size={14} style={{ color: '#22c55e' }} />
+                      ) : part.type === "call" && part.callStatus === "error" ? (
+                        <X size={14} style={{ color: '#ef4444' }} />
+                      ) : (
+                        <Loader2 size={14} className="spin-icon" />
+                      )}
                     </span>
-                    <span className="progress-text shiny-text">
-                      {part.content.startsWith("> call:") ? (
-                        <>
-                          <span style={{ opacity: 0.7 }}>Tool:</span> {part.content.replace("> call:", "").trim()}
-                        </>
-                      ) : part.content.startsWith("[Tool:") ? (
+                    <span className="progress-text">
+                      {part.type === "call" ? (
                         (() => {
-                          const rawName = part.content.replace(/[[\]]/g, '').replace("Tool:", "").trim();
-                          // Nếu tên là Action hoặc Task thì hiện Processing cho nó chuyên nghiệp
+                          const rawName = part.content;
                           if (rawName.toLowerCase() === 'action' || rawName.toLowerCase() === 'task') {
-                            return "Processing...";
+                            return part.callStatus === "success" ? "Done" : part.callStatus === "error" ? "Failed" : "Processing...";
                           }
-                          // Nếu là MCP tool (có dấu :) thì bóc tách cho gọn
                           if (rawName.includes(':')) {
-                            const parts = rawName.split(':');
-                            return (
-                              <>
-                                <span style={{ opacity: 0.7 }}>{parts[0]}:</span> {parts.slice(1).join(':')}
-                              </>
-                            );
+                            const pieces = rawName.split(':');
+                            return pieces.slice(1).join(':').trim();
                           }
-                          return (
-                            <>
-                              <span style={{ opacity: 0.7 }}>Tool:</span> {rawName}
-                            </>
-                          );
+                          return rawName;
                         })()
                       ) : (
                         part.content.split('\n')[0].replace(/[\][>]/g, '').trim() || "Processing..."
