@@ -295,7 +295,7 @@ export class GeminiACPClient {
     }
   }
 
-  public async setSessionModel(sessionId: string, modelId: string): Promise<void> {
+  public async setSessionModel(sessionId: string, modelId: string | undefined): Promise<void> {
     if (!this.connection) return;
     try {
       const req = new RequestType<any, any, any>("session/unstable_setSessionModel");

@@ -271,7 +271,7 @@ export class GeminiChatController {
     const defaultArgs = config.get<string[]>("defaultArgs", []);
 
     const preferredModel = (session.defaultModelId || "").trim();
-    const modelName = preferredModel || this.extractModelNameFromArgs(defaultArgs) || "gemini-1.5-flash";
+    const modelName = preferredModel || this.extractModelNameFromArgs(defaultArgs) || undefined;
     const effectiveMode = route.commandMeta?.mode ?? session.activeMode ?? "plan";
     const selectedAgent = (session.defaultAgentId || "").trim();
 
@@ -282,8 +282,8 @@ export class GeminiChatController {
       createdAt: Date.now(),
       status: "streaming",
       requestId,
-      model: modelName,
-      modelId: modelName,
+      model: modelName || "auto",
+      modelId: modelName || "auto",
       mode: effectiveMode
     };
 
