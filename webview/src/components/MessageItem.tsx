@@ -1,10 +1,10 @@
-import { User, Loader2, Check, X } from "lucide-react";
+import { User, Loader2, Check, X, Copy } from "lucide-react";
 import { GeminiLogo } from "./GeminiLogo";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkEmoji from "remark-emoji";
 import rehypeRaw from "rehype-raw";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { ChatMessage } from "../types";
@@ -17,6 +17,42 @@ interface MessageItemProps {
   message: ChatMessage;
   onRetry?: () => void;
 }
+
+const CodeBlock = ({ inline, className, children, ...props }: any) => {
+  const match = /language-(\w+)/.exec(className || '');
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(String(children).replace(/\n$/, ''));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return !inline && match ? (
+    <div className="code-block-wrapper">
+      <div className="code-block-header">
+        <button className="copy-button" onClick={handleCopy} title="Copy code">
+          {copied ? <Check size={14} /> : <Copy size={14} />}
+          <span>{copied ? "Copied!" : "Copy"}</span>
+        </button>
+      </div>
+      <SyntaxHighlighter
+        style={vscDarkPlus as any}
+        language={match[1]}
+        PreTag="div"
+        className="syntax-highlighter"
+        customStyle={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all', margin: 0 }}
+        {...props}
+      >
+        {String(children).replace(/\n$/, '')}
+      </SyntaxHighlighter>
+    </div>
+  ) : (
+    <code className={className} {...props}>
+      {children}
+    </code>
+  );
+};
 
 export function MessageItem({ message }: MessageItemProps) {
   const isAssistant = message.role === "assistant";
@@ -267,25 +303,7 @@ export function MessageItem({ message }: MessageItemProps) {
                     remarkPlugins={[remarkGfm, remarkEmoji]} 
                     rehypePlugins={[rehypeRaw]}
                     components={{
-                      code({ inline, className, children, ...props }: any) {
-                        const match = /language-(\w+)/.exec(className || '');
-                        return !inline && match ? (
-                          <SyntaxHighlighter
-                            style={vscDarkPlus as any}
-                            language={match[1]}
-                            PreTag="div"
-                            className="syntax-highlighter"
-                            customStyle={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}
-                            {...props}
-                          >
-                            {String(children).replace(/\n$/, '')}
-                          </SyntaxHighlighter>
-                        ) : (
-                          <code className={className} {...props}>
-                            {children}
-                          </code>
-                        );
-                      }
+                      code: CodeBlock
                     }}
                   >
                     {part.content

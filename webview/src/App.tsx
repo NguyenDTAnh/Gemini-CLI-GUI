@@ -413,6 +413,24 @@ export default function App() {
     });
   }, [activeSession, availableAgents]);
 
+  const cycleModel = useCallback(() => {
+    const models = availableModels.filter((m) => m !== "manual");
+    if (!activeSession?.id || models.length === 0) {
+      return;
+    }
+
+    const currentModelId = (activeSession.defaultModelId || "auto").trim();
+    const currentIndex = models.findIndex((m) => m === currentModelId);
+    const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % models.length;
+    const nextModelId = models[nextIndex];
+
+    postMessage({
+      type: "setModel",
+      sessionId: activeSession.id,
+      modelId: nextModelId
+    });
+  }, [activeSession, availableModels]);
+
   useEffect(() => {
     const handleCycleAgentShortcut = (event: KeyboardEvent) => {
       const triggerCycle = (event.metaKey || event.ctrlKey) && event.shiftKey && event.code === "KeyA";
@@ -427,6 +445,36 @@ export default function App() {
     window.addEventListener("keydown", handleCycleAgentShortcut);
     return () => window.removeEventListener("keydown", handleCycleAgentShortcut);
   }, [cycleAgent]);
+
+  useEffect(() => {
+    const handleCycleModelShortcut = (event: KeyboardEvent) => {
+      const triggerCycle = (event.metaKey || event.ctrlKey) && event.shiftKey && event.code === "Period";
+      if (!triggerCycle) {
+        return;
+      }
+
+      event.preventDefault();
+      cycleModel();
+    };
+
+    window.addEventListener("keydown", handleCycleModelShortcut);
+    return () => window.removeEventListener("keydown", handleCycleModelShortcut);
+  }, [cycleModel]);
+
+  useEffect(() => {
+    const handleToggleModeShortcut = (event: KeyboardEvent) => {
+      if (!event.shiftKey || event.key !== "Tab" || event.metaKey || event.ctrlKey || !activeSession?.id) {
+        return;
+      }
+
+      event.preventDefault();
+      const nextMode = (activeSession.activeMode || "edit") === "plan" ? "edit" : "plan";
+      postMessage({ type: "toggleMode", sessionId: activeSession.id, mode: nextMode });
+    };
+
+    window.addEventListener("keydown", handleToggleModeShortcut);
+    return () => window.removeEventListener("keydown", handleToggleModeShortcut);
+  }, [activeSession]);
 
   const sendPrompt = (prompt: string) => {
     if (!activeSession?.id) {

@@ -1,7 +1,5 @@
 import { ChevronDown } from "lucide-react";
 
-import { useState, useRef, useEffect } from "react";
-
 interface ModelSelectorProps {
   modelId: string;
   modelOptions: string[];
@@ -41,7 +39,7 @@ export function ModelSelector({ modelId, modelOptions, onSelect, isOpen, onToggl
       {isOpen && (
         <div className="model-dropdown">
           <div className="dropdown-scroll-list">
-            {modelOptions.map((option) => (
+            {modelOptions.filter((option) => option !== "manual").map((option) => (
               <button
                 key={option}
                 type="button"
@@ -53,7 +51,7 @@ export function ModelSelector({ modelId, modelOptions, onSelect, isOpen, onToggl
               >
                 <div className="model-item-info">
                   <span className="model-item-name">
-                    {option === "manual" ? "Enter Model ID manually..." : getModelLabel(option)}
+                    {getModelLabel(option)}
                   </span>
                   {option === "auto" && <span className="model-tag">Recommended</span>}
                 </div>
