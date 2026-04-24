@@ -415,3 +415,5 @@ export const ContentEditableInput = forwardRef<ContentEditableInputHandle, Conte
       )}    </div>
   );
 });
+
+ContentEditableInput.displayName = "ContentEditableInput";

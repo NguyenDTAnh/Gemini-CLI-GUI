@@ -411,7 +411,7 @@ export default function App() {
       sessionId: activeSession.id,
       agentId: nextAgentId
     });
-  }, [activeSession?.defaultAgentId, activeSession?.id, availableAgents]);
+  }, [activeSession, availableAgents]);
 
   useEffect(() => {
     const handleCycleAgentShortcut = (event: KeyboardEvent) => {
