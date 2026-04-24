@@ -1362,10 +1362,10 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
 }
 
 /* Diff Viewer Styles */
-.diff-container { margin: 0; border-radius: 8px; overflow: hidden; border: 1px solid var(--line); background: #000; font-family: 'SF Mono', Monaco, Consolas, monospace; }
-.diff-file-header { padding: 8px 12px; background: var(--bg-1); border-bottom: 1px solid var(--line); font-size: 11px; color: var(--muted); font-weight: 600; }
-.diff-file .diff { font-size: 11px; }
-.diff-hunk-header { background: rgba(168, 199, 250, 0.05) !important; color: #a8c7fa !important; padding: 4px 12px !important; }
+.diff-container { margin: 0; border-radius: 6px; overflow: hidden; border: 1px solid var(--line); background: #000; font-family: 'SF Mono', Monaco, Consolas, monospace; font-size: 10px; }
+.diff-file-header { padding: 4px 8px; background: var(--bg-1); border-bottom: 1px solid var(--line); font-size: 10px; color: var(--muted); font-weight: 600; }
+.diff-file .diff { font-size: 10px; }
+.diff-hunk-header { background: rgba(168, 199, 250, 0.05) !important; color: #a8c7fa !important; padding: 2px 8px !important; font-size: 10px !important; }
 .diff-code-insert { background: rgba(109, 213, 140, 0.1) !important; }
 .diff-code-delete { background: rgba(242, 184, 181, 0.1) !important; }
 .diff-gutter-insert { background: rgba(109, 213, 140, 0.15) !important; color: var(--ok) !important; }
@@ -1373,13 +1373,41 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
 .diff-gutter { border-right: 1px solid var(--line) !important; }
 .diff-code { color: var(--ink) !important; }
 
-.diff-stats-wrapper { margin-top: 4px; width: 100%; }
-.diff-stats-summary { all: unset; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--muted); padding: 4px 0; transition: color 0.2s; }
-.diff-stats-summary:hover { color: var(--ink); }
-.diff-totals { display: flex; gap: 6px; margin-left: auto; font-weight: 600; }
-.diff-stats-details { background: rgba(255, 255, 255, 0.03); border-radius: 8px; padding: 8px; margin-top: 4px; display: flex; flex-direction: column; gap: 6px; border: 1px solid rgba(255, 255, 255, 0.05); }
-.diff-stats-file-item { display: flex; align-items: center; gap: 8px; font-size: 11px; }
-.diff-stats-file-item .file-icon { 
+/* Diff Block - Collapsible Inline Diff (pattern giống thought-block) */
+.diff-block-group { display: flex; flex-direction: column; gap: 2px; width: 100%; }
+
+.diff-block {
+  margin: 0;
+  background: transparent !important;
+  backdrop-filter: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  width: 100%;
+}
+
+.diff-block-header {
+  all: unset;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 0;
+  font-size: 11px;
+  color: var(--muted);
+  transition: color 0.2s;
+  width: 100%;
+  box-sizing: border-box;
+  user-select: none;
+}
+.diff-block-header:hover { color: var(--ink); }
+
+.diff-block-chevron {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
   background: var(--gradient-primary) !important;
   background-size: 200% 200% !important;
   -webkit-background-clip: text !important;
@@ -1387,10 +1415,98 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   -webkit-text-fill-color: transparent !important;
   color: transparent !important;
   animation: orb-bg-pan 4s infinite linear !important;
-  opacity: 0.7; 
+  opacity: 0.8;
 }
-.diff-stats-file-item .file-path { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--muted); }
-.diff-stats-file-item .file-changes { display: flex; gap: 6px; font-weight: 600; }
+
+.diff-block-file-icon {
+  flex-shrink: 0;
+  background: var(--gradient-primary) !important;
+  background-size: 200% 200% !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  color: transparent !important;
+  animation: orb-bg-pan 4s infinite linear !important;
+  opacity: 0.7;
+}
+
+.diff-block-label {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background: linear-gradient(
+    120deg,
+    rgba(255, 255, 255, 0.4) 0%,
+    rgba(255, 255, 255, 0.4) 30%,
+    rgba(255, 255, 255, 1) 50%,
+    rgba(255, 255, 255, 0.4) 70%,
+    rgba(255, 255, 255, 0.4) 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shiny-text 3s infinite linear;
+}
+
+.diff-block-path {
+  font-weight: 600;
+  font-family: 'SF Mono', Monaco, Consolas, monospace;
+  font-size: 10px;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-block;
+  vertical-align: bottom;
+  /* Override shiny-text trên parent để file path nổi bật hơn */
+  -webkit-text-fill-color: var(--ink) !important;
+}
+
+.diff-block-arrow { opacity: 0.4; font-size: 10px; -webkit-text-fill-color: var(--muted) !important; }
+
+.diff-block-type { font-weight: 600; font-size: 10px; }
+
+.diff-block-stats { font-size: 10px; font-weight: 600; }
+.diff-block-stats .add { -webkit-text-fill-color: var(--ok) !important; }
+.diff-block-stats .del { -webkit-text-fill-color: var(--danger) !important; }
+
+/* Animation collapse/expand dùng CSS grid (giống thought-content-wrapper) */
+.diff-block-content-wrapper {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.diff-block.expanded .diff-block-content-wrapper {
+  grid-template-rows: 1fr;
+}
+
+.diff-block-content {
+  min-height: 0;
+  overflow: hidden;
+  padding: 0;
+  transition: padding 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.diff-block.expanded .diff-block-content {
+  padding: 4px 0 0 0;
+}
+
+/* Glassy container cho diff content khi expanded */
+.diff-block.expanded .diff-container {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+}
 
 .add { color: var(--ok) !important; }
 .del { color: var(--danger) !important; }

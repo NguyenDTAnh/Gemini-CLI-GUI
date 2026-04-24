@@ -8,8 +8,7 @@ import { useMemo, useState } from "react";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { ChatMessage } from "../types";
-import { DiffViewer } from "./DiffViewer";
-import { DiffStats } from "./DiffStats";
+import { DiffBlock } from "./DiffBlock";
 import { PermissionRequest } from "./PermissionRequest";
 import { ModelThinking } from "./ModelThinking";
 
@@ -229,7 +228,6 @@ export function MessageItem({ message }: MessageItemProps) {
     return segments;
   }, [message.content, message.status, isAssistant]);
 
-  const diffParts = useMemo(() => parts.filter(p => p.type === "diff").map(p => p.content), [parts]);
 
   return (
     <article className={`message-row ${message.role}`}>
@@ -264,7 +262,7 @@ export function MessageItem({ message }: MessageItemProps) {
                     <div className="shimmer-line" style={{ width: '40%' }}></div>
                   </div>
                 ) : part.type === "diff" ? (
-                  <DiffViewer diffText={part.content} />
+                  <DiffBlock diffText={part.content} />
                 ) : part.type === "thought" ? (
                   <ModelThinking content={part.content} isStreaming={message.status === "streaming"} />
                 ) : (part.type === "call" || part.type === "progress") ? (
@@ -319,7 +317,6 @@ export function MessageItem({ message }: MessageItemProps) {
               </div>
             );
           })}
-          {isAssistant && diffParts.length > 0 && <DiffStats diffTexts={diffParts} />}
         </div>
 
         {message.status && message.status !== "complete" && message.status !== "streaming" && (
