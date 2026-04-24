@@ -749,18 +749,19 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
 
 .composer-actions { 
   display: flex; 
+  flex-wrap: wrap;
   justify-content: space-between; 
-  align-items: flex-end; /* Align buttons to bottom */
-  gap: 12px;
+  align-items: center; 
+  gap: 8px;
   overflow: visible !important;
 }
 
 .action-left-group { 
   display: flex; 
   align-items: center; 
-  flex: 1; 
+  flex-wrap: wrap;
+  gap: 8px;
   overflow: visible !important;
-  padding-bottom: 2px; /* Align horizontally with the right button */
 }
 
 .action-left-group button,
