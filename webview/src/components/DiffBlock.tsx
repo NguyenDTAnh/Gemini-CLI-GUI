@@ -45,11 +45,9 @@ export function DiffBlock({ diffText, fileDiffData }: DiffBlockProps) {
           .split("\n")
           .filter(line => !/^={3,}$/.test(line.trim()))
           .join("\n");
-        const patch = `diff --git a/${name} b/${name}\n${cleaned}`;
-        console.log("🔶 [DiffBlock] patch output length=", patch.length, "first300=", patch.substring(0, 300));
-        return patch;
+        return `diff --git a/${name} b/${name}\n${cleaned}`;
       } catch (e) {
-        console.error("🔴 [DiffBlock] createTwoFilesPatch failed:", e);
+        console.error("Failed to create diff patch:", e);
         return "";
       }
     }
@@ -57,16 +55,9 @@ export function DiffBlock({ diffText, fileDiffData }: DiffBlockProps) {
   }, [diffText, fileDiffData]);
 
   const fileStats = useMemo<FileStats[]>(() => {
-    if (!resolvedDiff) {
-      console.log("🔶 [DiffBlock] resolvedDiff empty, returning []");
-      return [];
-    }
+    if (!resolvedDiff) return [];
     try {
       const files = parseDiff(resolvedDiff);
-      console.log("🔶 [DiffBlock] parseDiff result — files.length=", files.length, "first file keys=", files[0] ? Object.keys(files[0]) : "none");
-      if (files[0]) {
-        console.log("🔶 [DiffBlock] first file: oldPath=", files[0].oldPath, "newPath=", files[0].newPath, "type=", files[0].type, "hunks.length=", files[0].hunks?.length);
-      }
       return files.map((file) => {
         let additions = 0;
         let deletions = 0;
@@ -85,7 +76,7 @@ export function DiffBlock({ diffText, fileDiffData }: DiffBlockProps) {
         };
       });
     } catch (e) {
-      console.error("🔴 [DiffBlock] parseDiff failed:", e);
+      console.error("Failed to parse diff:", e);
       return [];
     }
   }, [resolvedDiff]);
