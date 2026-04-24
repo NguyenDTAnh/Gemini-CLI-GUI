@@ -96,10 +96,9 @@ function postMessage(message: WebviewToExtensionMessage): void {
 }
 
 export default function App() {
-  const persistedState = vscode.getState<{ activeSessionId?: string; debugMode?: boolean }>();
+  const persistedState = vscode.getState<{ activeSessionId?: string }>();
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string>(persistedState?.activeSessionId || "");
-  const [debugMode, setDebugMode] = useState<boolean>(Boolean(persistedState?.debugMode));
   const [running, setRunning] = useState(false);
   const [banner, setBanner] = useState<{ kind: "info" | "error"; text: string } | null>(null);
   const [availableAgents, setAvailableAgents] = useState<Agent[]>(DEFAULT_AGENT_OPTIONS);
@@ -335,10 +334,6 @@ export default function App() {
           setBanner({ kind: "info", text: message.message });
           return;
         }
-        case "debugModeToggled": {
-          setDebugMode(message.enabled);
-          return;
-        }
         case "error": {
           setBanner({ kind: "error", text: message.message });
           return;
@@ -359,10 +354,9 @@ export default function App() {
   useEffect(() => {
     vscode.setState({
       activeSessionId,
-      sessionCount: sessions.length,
-      debugMode
+      sessionCount: sessions.length
     });
-  }, [activeSessionId, debugMode, sessions.length]);
+  }, [activeSessionId, sessions.length]);
 
   useEffect(() => {
     // Use a timeout to avoid synchronous setState warning and cascading renders
@@ -491,14 +485,8 @@ export default function App() {
       </svg>      <SessionSidebar
         sessions={sessions}
         activeSessionId={activeSession?.id || ""}
-        debugMode={debugMode}
         onCreate={() => postMessage({ type: "createSession" })}
         onClear={() => postMessage({ type: "clearSessions" })}
-        onToggleDebug={() => {
-          const next = !debugMode;
-          setDebugMode(next);
-          postMessage({ type: "toggleDebugMode", enabled: next });
-        }}
         onSelect={(sessionId) => {
           setActiveSessionId(sessionId);
           postMessage({ type: "switchSession", sessionId });
