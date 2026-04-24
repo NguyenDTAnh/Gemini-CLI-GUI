@@ -44,7 +44,7 @@ class NDJsonMessageReader implements MessageReader {
       try {
         const msg = JSON.parse(trimmed) as Message;
         this._onData.fire(msg);
-      } catch (e) {
+      } catch {
         console.log(`[ACP CLI Raw Output] ${trimmed}`);
       }
     });
@@ -118,11 +118,37 @@ export interface ClientCallbacks {
   onError: (requestId: string, message: string) => void;
 }
 
+/**
+ * Mapping raw tool name -> display name giống Gemini CLI hiển thị.
+ * Nguồn: danh sách tools chuẩn của Gemini CLI.
+ */
+const TOOL_DISPLAY_NAMES: Record<string, string> = {
+  activate_skill: "Activate Skill",
+  ask_user: "Ask User",
+  cli_help: "CLI Help Agent",
+  codebase_investigator: "Codebase Investigator Agent",
+  replace: "Edit",
+  enter_plan_mode: "Enter Plan Mode",
+  glob: "FindFiles",
+  generalist: "Generalist Agent",
+  google_web_search: "GoogleSearch",
+  list_background_processes: "List Background Processes",
+  read_background_output: "Read Background Output",
+  read_file: "ReadFile",
+  list_directory: "ReadFolder",
+  save_memory: "SaveMemory",
+  grep_search: "SearchText",
+  run_shell_command: "Shell",
+  web_fetch: "WebFetch",
+  write_file: "WriteFile",
+};
+
 export class GeminiACPClient {
   private process?: cp.ChildProcessWithoutNullStreams;
   private connection?: MessageConnection;
   private runningRequestId?: string;
   private inThoughtBlock = false;
+  private _toolLabels = new Map<string, string>();
   private readonly callbacks: ClientCallbacks;
 
   constructor(
@@ -191,31 +217,30 @@ export class GeminiACPClient {
           this.callbacks.onChunk(text);
         }
       } else if (update.sessionUpdate === "tool_call") {
-        const tc = update.toolCall;
-        const toolName = tc?.name || tc?.title || tc?.id || update.title || "Executing...";
-        const contentLen = Array.isArray(update.content) ? update.content.length : 0;
-        console.log(`[ACP] tool_call: "${update.title}" status=${update.status} kind=${update.kind} contentLen=${contentLen}`);
-        if (contentLen > 0) {
-          for (const c of update.content) {
-            console.log(`[ACP] tool_call content item: type=${c.type} keys=${Object.keys(c)}`);
-          }
+        const tc = update.toolCall || update;
+        const callId = tc?.id || tc?.toolCallId || update.id || update.toolCallId;
+        const displayLabel = this.buildToolDisplayLabel(tc, update);
+        console.log(`[ACP] tool_call: id=${callId} raw=${tc?.name || tc?.toolCallId} -> label="${displayLabel}"`);
+
+        if (callId) {
+            this._toolLabels.set(callId, displayLabel);
         }
-        this.callbacks.onChunk(`\n[Tool: ${toolName}]\n`);
+
+        this.callbacks.onChunk(`\n[Tool: ${displayLabel}]\n`);
         // Extract diff từ tool_call content[] (có thể chứa diff khi completed)
-        this.emitDiffFromContent(update.content);
+        this.emitDiffFromContent(update.content || tc?.content);
       } else if (update.sessionUpdate === "tool_call_update") {
         const status = update.status === "completed" ? "Done" : update.status;
-        const toolName = update.title || update.toolCall?.name || update.toolCall?.title || "Task";
-        // Debug: ALWAYS log tool_call_update
-        const contentLen = Array.isArray(update.content) ? update.content.length : 0;
-        console.log(`[ACP] tool_call_update: "${toolName}" status=${update.status} contentLen=${contentLen} keys=${Object.keys(update)}`);
-        if (contentLen > 0) {
-          for (const c of update.content) {
-            console.log(`[ACP] content item: type=${c.type} keys=${Object.keys(c)} hasOldText=${!!c.oldText} hasNewText=${!!c.newText} hasOld_text=${!!c.old_text} hasNew_text=${!!c.new_text}`);
-          }
-        }
-        this.callbacks.onChunk(`\n[Tool: ${toolName} - ${status}]\n`);
-        this.emitDiffFromContent(update.content);
+        const tc = update.toolCall || update;
+        const callId = tc?.id || tc?.toolCallId || update.id || update.toolCallId;
+
+        const displayLabel = (callId && this._toolLabels.has(callId))
+          ? this._toolLabels.get(callId)!
+          : this.buildToolDisplayLabel(tc, update, "Task");
+        console.log(`[ACP] tool_call_update: id=${callId} status=${update.status} label="${displayLabel}" cached=${!!(callId && this._toolLabels.has(callId))}`);
+
+        this.callbacks.onChunk(`\n[Tool: ${displayLabel} - ${status}]\n`);
+        this.emitDiffFromContent(update.content || tc?.content);
       } else if (update.sessionUpdate === "agent_thought") {
         if (update.content?.type === "text" && update.content?.text) {
           if (!this.inThoughtBlock) {
@@ -255,6 +280,15 @@ export class GeminiACPClient {
       const tc = params.toolCall;
       const title = tc?.title || tc?.name || tc?.id || params.message || "Agent wants to perform an action";
       const options = params.options || [];
+
+      // Cache display label cho tool này ngay từ permission request
+      // để tool_call_update sau đó hiển thị đúng tên tool (VD: Edit [README.md])
+      const permCallId = tc?.id || tc?.toolCallId;
+      if (permCallId && !this._toolLabels.has(permCallId)) {
+        const label = this.buildToolDisplayLabel(tc, params);
+        this._toolLabels.set(permCallId, label);
+        console.log(`[ACP] Cached tool label from permission: id=${permCallId} label="${label}"`);
+      }
 
       // Extract diff data từ file_edit_details hoặc toolCall content (ACP Protocol)
       const fileEdit = params.file_edit_details || params.fileEditDetails || tc?.file_edit_details || tc?.fileEditDetails;
@@ -426,5 +460,77 @@ export class GeminiACPClient {
       this.process = undefined;
     }
     this.runningRequestId = undefined;
+    this._toolLabels.clear();
+  }
+
+  /**
+   * Tính display label cho tool call: map tên tool sang display name (giống CLI)
+   * + trích xuất target (file/path/url/command) từ arguments.
+   * Format: "DisplayName: target" (webview sẽ parse thành "DisplayName [target]")
+   *
+   * Lưu ý: KHÔNG fallback về `title` vì ACP title là human description
+   * (VD: "themes/README.md: hotfix..."), không phải tên tool.
+   */
+  private buildToolDisplayLabel(tc: any, update: any, fallbackName = "Executing"): string {
+    // Ưu tiên: tc.name > update.name > parse từ toolCallId (VD: "replace-1777051203110-2" -> "replace")
+    let rawToolName: string = tc?.name || update.name || "";
+    if (!rawToolName) {
+      const rawId: string = tc?.id || tc?.toolCallId || update.id || update.toolCallId || "";
+      // Format: "{tool_name}-{timestamp}-{idx}" - bỏ 2 segment số cuối
+      const parsed = rawId.replace(/-\d+-\d+$/, '').replace(/-\d+$/, '');
+      if (parsed && parsed !== rawId) rawToolName = parsed;
+    }
+    if (!rawToolName) rawToolName = fallbackName;
+
+    // Bỏ prefix default_api:, mcp_provider_ nếu có để lấy tool key thuần
+    const normalizedKey = (rawToolName.split(':').pop() || rawToolName)
+      .replace(/^mcp_[^_]+_/, '')
+      .toLowerCase();
+
+    // Map sang display name chuẩn CLI, fallback: snake_case -> PascalCase
+    const displayToolName = TOOL_DISPLAY_NAMES[normalizedKey]
+      || normalizedKey.split('_').map(w => w ? w[0].toUpperCase() + w.slice(1) : '').join('');
+
+    // Trích xuất target từ arguments (path/file/url/command/query/pattern)
+    let target = "";
+    const args = tc?.arguments || tc?.args || tc?.input || tc?.parameters || {};
+    if (typeof args === 'object' && args !== null) {
+      target = args.path || args.file_path || args.filePath || args.absolute_path
+        || args.dir_path || args.dirPath
+        || args.command // run_shell_command
+        || args.pattern // glob / grep
+        || args.query   // google_web_search / agents
+        || args.url     // web_fetch
+        || args.prompt  // ask_user / subagents
+        || "";
+    }
+
+    // Fallback: extract path từ tc.locations hoặc tc.content[].path nếu args không có
+    if (!target && Array.isArray(tc?.locations) && tc.locations.length > 0) {
+      target = tc.locations[0]?.path || "";
+    }
+    if (!target && Array.isArray(tc?.content)) {
+      const pathItem = tc.content.find((c: any) => c?.path);
+      if (pathItem) target = pathItem.path;
+    }
+
+    // Rút gọn target: hostname cho URL, basename cho path, truncate cho command dài
+    let displayTarget = typeof target === 'string' ? target : String(target ?? '');
+    if (displayTarget.includes('/')) {
+      if (displayTarget.startsWith('http')) {
+        try { displayTarget = new URL(displayTarget).hostname; } catch { /* giữ nguyên */ }
+      } else if (!displayTarget.includes(' ')) {
+        // Chỉ split path khi không phải shell command
+        displayTarget = displayTarget.split('/').filter(Boolean).pop() || displayTarget;
+      }
+    }
+    // Truncate command/query dài
+    if (displayTarget.length > 80) {
+      displayTarget = displayTarget.slice(0, 77) + '...';
+    }
+    // Chỉ lấy dòng đầu cho shell command nhiều dòng
+    displayTarget = displayTarget.split('\n')[0];
+
+    return displayTarget ? `${displayToolName}: ${displayTarget}` : displayToolName;
   }
 }

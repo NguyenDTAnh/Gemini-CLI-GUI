@@ -58,7 +58,7 @@ export function MessageItem({ message }: MessageItemProps) {
 
   const parts = useMemo(() => {
     const content = message.content || "";
-    type Segment = { type: "text" | "diff" | "progress" | "loading" | "permission" | "thought" | "call"; content: string; data?: any; callStatus?: "pending" | "success" | "error" };
+    type Segment = { type: "text" | "diff" | "progress" | "loading" | "permission" | "thought" | "call"; content: string; data?: any; callStatus?: "pending" | "success" | "error"; isClosed?: boolean };
     const segments: Segment[] = [];
 
     if (content) {
@@ -177,7 +177,9 @@ export function MessageItem({ message }: MessageItemProps) {
               thoughtContent = thoughtContent.replace("<think>", "").replace("</think>", "");
             }
             
-            segments.push({ type: "thought", content: thoughtContent.trim() });
+            // Thought được đóng khi tìm thấy </thought>/</think> hoặc bị đẩy sang segment khác
+            const isClosed = foundEndTag || splitIdx !== -1 || (!foundEndTag && message.status !== "streaming");
+            segments.push({ type: "thought", content: thoughtContent.trim(), isClosed });
             
             // Nếu có phần nội dung sau thẻ đóng, đẩy nó vào segment text bình thường
             if (remainingPart.trim()) {
@@ -290,9 +292,13 @@ export function MessageItem({ message }: MessageItemProps) {
                     <div className="shimmer-line" style={{ width: '40%' }}></div>
                   </div>
                 ) : part.type === "diff" ? (
-                  <DiffBlock diffText={part.content} fileDiffData={part.data} />
+                  <DiffBlock 
+                    diffText={part.content} 
+                    fileDiffData={part.data} 
+                    isStreaming={message.status === "streaming"} 
+                  />
                 ) : part.type === "thought" ? (
-                  <ModelThinking content={part.content} isStreaming={message.status === "streaming"} />
+                  <ModelThinking content={part.content} isStreaming={message.status === "streaming" && !part.isClosed} />
                 ) : (part.type === "call" || part.type === "progress") ? (
                   <div className="progress-status">
                     <span className="progress-icon">
@@ -304,7 +310,11 @@ export function MessageItem({ message }: MessageItemProps) {
                         <Loader2 size={14} className="spin-icon" />
                       )}
                     </span>
-                    <span className="progress-text shiny-text">
+                    <span className={`progress-text ${
+                      (part.type === "call" && (part.callStatus === "success" || part.callStatus === "error")) || 
+                      (part.type === "progress" && message.status === "complete") 
+                      ? 'static-shiny-text' : 'shiny-text'
+                    }`}>
                       {part.type === "call" ? (
                         (() => {
                           const rawName = part.content;
@@ -312,8 +322,14 @@ export function MessageItem({ message }: MessageItemProps) {
                             return part.callStatus === "success" ? "Done" : part.callStatus === "error" ? "Failed" : "Processing...";
                           }
                           if (rawName.includes(':')) {
-                            const pieces = rawName.split(':');
-                            return pieces.slice(1).join(':').trim();
+                            const [tool, ...rest] = rawName.split(':');
+                            const target = rest.join(':').trim();
+                            return (
+                              <>
+                                <span style={{ fontWeight: 600 }}>{tool.trim()}</span>
+                                {" "}[{target}]
+                              </>
+                            );
                           }
                           return rawName;
                         })()

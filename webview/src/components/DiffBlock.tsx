@@ -14,6 +14,7 @@ interface FileDiffData {
 interface DiffBlockProps {
   diffText: string;
   fileDiffData?: FileDiffData;
+  isStreaming?: boolean;
 }
 
 interface FileStats {
@@ -29,7 +30,7 @@ interface FileStats {
  * Render mỗi file thay đổi thành 1 block riêng, collapse/expand giống thought-block
  * Hỗ trợ multiple files trong cùng 1 diff text
  */
-export function DiffBlock({ diffText, fileDiffData }: DiffBlockProps) {
+export function DiffBlock({ diffText, fileDiffData, isStreaming }: DiffBlockProps) {
   const resolvedDiff = useMemo(() => {
     if (fileDiffData?.path) {
       try {
@@ -86,14 +87,14 @@ export function DiffBlock({ diffText, fileDiffData }: DiffBlockProps) {
   return (
     <div className="diff-block-group">
       {fileStats.map((file, idx) => (
-        <DiffFileBlock key={`${file.path}-${idx}`} file={file} />
+        <DiffFileBlock key={`${file.path}-${idx}`} file={file} isStreaming={isStreaming} />
       ))}
     </div>
   );
 }
 
 /** Block đơn cho 1 file diff — collapsible với animation slide */
-function DiffFileBlock({ file }: { file: FileStats }) {
+function DiffFileBlock({ file, isStreaming }: { file: FileStats; isStreaming?: boolean }) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   // Map diff type sang label hiển thị
@@ -117,12 +118,7 @@ function DiffFileBlock({ file }: { file: FileStats }) {
           {statusIcon}
         </span>
         <span className="diff-block-summary-text progress-text">
-          <span className="diff-block-summary-main shiny-text">
-            <span className="diff-block-summary-action">Edit</span>
-            <span className="diff-block-path" title={file.path}>
-              {file.path.split("/").pop()}
-            </span>
-            <span className="diff-block-arrow">→</span>
+          <span className={`diff-block-summary-main ${isStreaming ? 'shiny-text' : 'static-shiny-text'}`} title={file.path}>
             <span className="diff-block-type">{typeLabel}</span>
           </span>
           <span className="diff-block-stats">

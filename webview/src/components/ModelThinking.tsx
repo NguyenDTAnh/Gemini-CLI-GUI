@@ -19,7 +19,7 @@ export function ModelThinking({ content, isStreaming }: ModelThinkingProps) {
         <span className="thought-icon">
           <span className="bullet">●</span>
         </span>
-        <span className="thought-header-text shiny-text">
+        <span className={`thought-header-text ${isStreaming ? 'shiny-text' : 'static-shiny-text'}`}>
           {isStreaming ? "Gemini is processing..." : "Thought process"}
         </span>
       </div>
