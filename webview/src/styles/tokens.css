@@ -1640,7 +1640,7 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
 }
 
 .thought-block.expanded .thought-content {
-  padding: 4px 0 12px 22px;
+  padding: 4px 0px 0px 22px;
 }
 
 .thought-content strong { color: var(--ink); font-weight: 600; }

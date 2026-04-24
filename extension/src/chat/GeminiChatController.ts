@@ -271,7 +271,7 @@ export class GeminiChatController {
     const defaultArgs = config.get<string[]>("defaultArgs", []);
 
     const preferredModel = (session.defaultModelId || "").trim();
-    const modelName = preferredModel || this.extractModelNameFromArgs(defaultArgs) || "Gemini";
+    const modelName = preferredModel || this.extractModelNameFromArgs(defaultArgs) || "gemini-1.5-flash";
     const effectiveMode = route.commandMeta?.mode ?? session.activeMode ?? "plan";
     const selectedAgent = (session.defaultAgentId || "").trim();
 
@@ -362,10 +362,50 @@ export class GeminiChatController {
       await this.acpClient.start();
     }
 
+    const mcpServers = config.get<any[]>("mcpServers", []);
+    const mcpHash = JSON.stringify(mcpServers);
+    
+    // Check if we need to recreate the session or just update the model
+    const sessionKey = `session_${session.id}`;
+    const lastSessionConfig = (this as any)._sessionConfigs?.get(sessionKey) || {};
+    
+    let acpSessionId = session.acpSessionId;
+    
+    try {
+      // Scenario 1: No session exists OR MCP config changed -> Must create NEW session
+      if (!acpSessionId || lastSessionConfig.mcpHash !== mcpHash) {
+        console.log(`[Controller] Creating new ACP session (Model: ${modelName}, MCPs: ${mcpServers.length})`);
+        
+        const effectiveMcpServers = mcpServers.length > 0 ? mcpServers : undefined;
+        acpSessionId = await this.acpClient.newSession(modelName, effectiveMcpServers);
+        session.acpSessionId = acpSessionId;
+        
+        // Track current config
+        if (!(this as any)._sessionConfigs) (this as any)._sessionConfigs = new Map();
+        (this as any)._sessionConfigs.set(sessionKey, { modelName, mcpHash });
+        
+        await this.store.upsertSession(session);
+      } 
+      // Scenario 2: Session exists, MCP same, but Model changed -> Update model for EXISTING session
+      else if (lastSessionConfig.modelName !== modelName) {
+        console.log(`[Controller] Switching session model to: ${modelName}`);
+        await this.acpClient.setSessionModel(acpSessionId!, modelName);
+        
+        // Update tracked model
+        lastSessionConfig.modelName = modelName;
+      }
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      this.post({ type: "error", message: `Failed to initialize Gemini session: ${msg}` });
+      void this.finishRequest(session.id, assistantMessage.id, requestId, "error", msg);
+      return;
+    }
+
     const agentCommand = selectedAgent ? `/${selectedAgent}` : undefined;
     const finalPrompt = [
       ...(agentCommand ? [agentCommand] : []),
       "You are Gemini CLI running inside VS Code extension via ACP Mode.",
+      "You HAVE access to various tools and plugins through MCP. USE THEM PROACTIVELY when needed to fulfill the request.",
       `Respond in language: ${responseLanguage}.`,
       "If context files are provided, use them as primary source.",
       "",
@@ -373,18 +413,8 @@ export class GeminiChatController {
       "User prompt:",
       transformedPrompt
     ].filter(Boolean).join("\n");
-
-    const mcpServers = config.get<any[]>("mcpServers", []);
     
-    // Reuse existing acpSessionId if available to maintain context
-    let acpSessionId = session.acpSessionId;
-    if (!acpSessionId) {
-      acpSessionId = await this.acpClient.newSession(modelName, mcpServers);
-      session.acpSessionId = acpSessionId;
-      await this.store.upsertSession(session);
-    }
-    
-    this.acpClient.prompt(requestId, { sessionId: acpSessionId, prompt: finalPrompt }).catch(() => {});
+    this.acpClient.prompt(requestId, { sessionId: acpSessionId!, prompt: finalPrompt }).catch(() => {});
   }
 
   private async finishRequest(

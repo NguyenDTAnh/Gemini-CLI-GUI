@@ -143,6 +143,10 @@ export class GeminiACPClient {
       stdio: "pipe"
     });
 
+    this.process.stderr.on("data", (data) => {
+      console.error(`[ACP CLI Stderr] ${data.toString()}`);
+    });
+
     const reader = new NDJsonMessageReader(this.process.stdout);
     const writer = new NDJsonMessageWriter(this.process.stdin);
 
@@ -263,21 +267,42 @@ export class GeminiACPClient {
     }
   }
 
-  public async newSession(modelId?: string, mcpServers: any[] = []): Promise<string> {
+  public async newSession(modelId?: string, mcpServers?: any[]): Promise<string> {
     if (!this.connection) {
       await this.start();
     }
     try {
-      const req = new RequestType<any, any, any>("session/new");
-      const res = await this.connection!.sendRequest(req, { 
+      const payload: any = { 
         model: modelId,
         cwd: this.cwd || process.cwd(),
-        mcpServers: mcpServers
-      });
+        mcpServers: mcpServers || [] // CLI requires an array, even if empty
+      };
+      
+      console.log("[ACP] Sending session/new with payload:", JSON.stringify(payload));
+      
+      const req = new RequestType<any, any, any>("session/new");
+      const res = await this.connection!.sendRequest(req, payload);
+      
+      if (!res || !res.sessionId) {
+        throw new Error("CLI returned an empty or invalid session response");
+      }
+      
       return res.sessionId;
     } catch (e) {
-      console.error("Failed to create new session", e);
-      return "";
+      console.error("[ACP] Failed to create new session. Error details:", e);
+      // Re-throw to let controller handle it
+      throw e;
+    }
+  }
+
+  public async setSessionModel(sessionId: string, modelId: string): Promise<void> {
+    if (!this.connection) return;
+    try {
+      const req = new RequestType<any, any, any>("session/unstable_setSessionModel");
+      await this.connection.sendRequest(req, { sessionId, model: modelId });
+      console.log(`[ACP] Session model updated to: ${modelId}`);
+    } catch (e) {
+      console.error("Failed to set session model", e);
     }
   }
 
