@@ -232,7 +232,7 @@ export function MessageItem({ message }: MessageItemProps) {
                 ) : part.type === "diff" ? (
                   <DiffViewer diffText={part.content} />
                 ) : part.type === "thought" ? (
-                  <ModelThinking content={part.content} />
+                  <ModelThinking content={part.content} isStreaming={message.status === "streaming"} />
                 ) : (part.type === "call" || part.type === "progress") ? (
                   <div className="progress-status">
                     <span className="progress-icon">

@@ -1452,8 +1452,6 @@ h1, h2, h3, h4, h5, h6, h7, h8 {
   background: none !important;
   color: var(--muted) !important;
   font-size: 11px !important;
-  padding: 4px 0 4px 4px !important;
-  margin-top: 6px !important;
   border: none !important;
   word-break: break-all;
   font-family: var(--font-mono);
