@@ -29,11 +29,12 @@ export function MessageItem({ message }: MessageItemProps) {
     if (content) {
       if (isAssistant) {
         // Regex chỉ cắt ở đầu các khối đặc biệt để đảm bảo tính ổn định khi streaming
-        const regex = /(?=diff --git|--- [ai]\/|\[Subagent:|<subagent |<thought>|<think>|> call:|\[Tool:|\s*<permission_request>)/g;
+        const regex = /(?=diff --git|--- [ai]\/|\[Subagent:|<subagent |<thought>|<think>|> call:|\[Tool:|\s*<permission_request>|<div class="permission-confirmed">)/g;
         const splitSegments = content.split(regex);
         
         splitSegments.filter(s => s.trim()).forEach(s => {
           const trimmed = s.trim();
+          
           if (trimmed.startsWith("<permission_request>")) {
             try {
               const startTag = "<permission_request>";
@@ -70,14 +71,42 @@ export function MessageItem({ message }: MessageItemProps) {
             
             // Tìm thẻ đóng để tách nội dung thực sự ra khỏi block suy nghĩ
             const thoughtEndTags = ["</thought>", "</think>"];
+            let foundEndTag = false;
             
             for (const tag of thoughtEndTags) {
               const idx = trimmed.indexOf(tag);
               if (idx !== -1) {
                 thoughtPart = trimmed.substring(0, idx + tag.length);
                 remainingPart = trimmed.substring(idx + tag.length);
+                foundEndTag = true;
                 break;
               }
+            }
+
+            // Nếu không tìm thấy thẻ đóng, hoặc bên trong thought có chứa permission_request (AI lỗi)
+            // ta cần cắt nó ra để không bị render nhầm vào trong ModelThinking
+            const permissionStartIdx = thoughtPart.indexOf("<permission_request>");
+            const confirmedStartIdx = thoughtPart.indexOf('<div class="permission-confirmed">');
+            
+            let splitIdx = -1;
+            if (permissionStartIdx !== -1 && confirmedStartIdx !== -1) {
+                splitIdx = Math.min(permissionStartIdx, confirmedStartIdx);
+            } else if (permissionStartIdx !== -1) {
+                splitIdx = permissionStartIdx;
+            } else if (confirmedStartIdx !== -1) {
+                splitIdx = confirmedStartIdx;
+            }
+
+            if (splitIdx !== -1) {
+                // Nếu tìm thấy tag bên trong, ta cắt thoughtPart tại đó
+                remainingPart = thoughtPart.substring(splitIdx) + remainingPart;
+                thoughtPart = thoughtPart.substring(0, splitIdx);
+            } else if (!foundEndTag && message.status !== "streaming") {
+               const nextBlockIdx = trimmed.slice(1).search(/diff --git|--- [ai]\/|\[Subagent:|<subagent |> call:|\[Tool:|<permission_request>|<div class="permission-confirmed">/);
+               if (nextBlockIdx !== -1) {
+                  thoughtPart = trimmed.substring(0, nextBlockIdx + 1);
+                  remainingPart = trimmed.substring(nextBlockIdx + 1);
+               }
             }
             
             // Làm sạch nội dung thinking (bỏ tag)
@@ -215,7 +244,7 @@ export function MessageItem({ message }: MessageItemProps) {
                         <Loader2 size={14} className="spin-icon" />
                       )}
                     </span>
-                    <span className="progress-text">
+                    <span className="progress-text shiny-text">
                       {part.type === "call" ? (
                         (() => {
                           const rawName = part.content;

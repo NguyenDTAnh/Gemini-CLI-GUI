@@ -44,7 +44,7 @@ export function PermissionRequest({ requestId, message, options }: PermissionReq
     if (responded) {
       return (
         <div className="permission-confirmed">
-          <span className="bullet">●</span> Bạn đã chọn: {options.find(o => o.value === selectedValue)?.label}
+          <span className="bullet">●</span> You selected: {options.find(o => o.value === selectedValue)?.label}
         </div>
       );
     }

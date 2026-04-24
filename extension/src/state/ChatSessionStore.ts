@@ -17,6 +17,7 @@ export class ChatSessionStore {
   constructor(private readonly context: vscode.ExtensionContext) {
     this.state = this.readState();
     this.state.sessions = this.state.sessions.map((session) => this.ensureDefaultAgent(session));
+    this.state.sessions = this.state.sessions.map((session) => this.ensureDefaultMode(session));
 
     if (this.state.sessions.length === 0) {
       const initial = this.newSession("General");
@@ -113,7 +114,7 @@ export class ChatSessionStore {
       updatedAt: now,
       attachments: [],
       messages: [],
-      activeMode: "plan",
+      activeMode: "edit",
       defaultAgentId: "generalist"
     };
   }
@@ -126,6 +127,17 @@ export class ChatSessionStore {
     return {
       ...session,
       defaultAgentId: "generalist"
+    };
+  }
+
+  private ensureDefaultMode(session: ChatSession): ChatSession {
+    if (session.activeMode) {
+      return session;
+    }
+
+    return {
+      ...session,
+      activeMode: "edit"
     };
   }
 

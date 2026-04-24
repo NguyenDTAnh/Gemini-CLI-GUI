@@ -55,6 +55,10 @@
       {
         "command": "geminiCliChat.insertSelectedContext",
         "title": "Gemini Chat: Add Selected Context"
+      },
+      {
+        "command": "geminiCliChat.toggleModeQuick",
+        "title": "Gemini Chat: Toggle Mode Quick"
       }
     ],
     "keybindings": [
@@ -63,6 +67,12 @@
         "key": "ctrl+shift+i",
         "mac": "cmd+shift+i",
         "when": "editorTextFocus && editorHasSelection"
+      },
+      {
+        "command": "geminiCliChat.toggleModeQuick",
+        "key": "ctrl+shift+q",
+        "mac": "cmd+shift+q",
+        "when": "focusedView == 'geminiCliChat.views.main'"
       }
     ],
     "configuration": {

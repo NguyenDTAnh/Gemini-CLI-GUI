@@ -177,6 +177,41 @@ export const ContentEditableInput = forwardRef<ContentEditableInputHandle, Conte
       editorRef.current.innerHTML = '';
     }
 
+    // --- NEW: Sanitize HTML to only allow safe elements ---
+    const sanitize = (container: Node) => {
+      const children = Array.from(container.childNodes);
+      children.forEach(node => {
+        if (node.nodeType === Node.ELEMENT_NODE) {
+          const el = node as HTMLElement;
+          const isChip = el.classList.contains('mention-chip');
+          const isSafeTag = el.tagName === 'BR' || el.tagName === 'DIV' || el.tagName === 'P';
+
+          if (isChip) {
+            // Chips are sacred, don't touch them or their children
+            return;
+          }
+
+          if (isSafeTag) {
+            // Safe tags are allowed, but clean their contents
+            sanitize(el);
+          } else {
+            // Disallowed tag: move its children out then remove it (flattening)
+            while (el.firstChild) {
+              el.parentNode?.insertBefore(el.firstChild, el);
+            }
+            el.parentNode?.removeChild(el);
+            // After removing el, we don't need to do more for this node, 
+            // but the children we just moved out will be processed in the next steps 
+            // of the outer loop if they are already in the 'children' array.
+            // Actually, we should sanitize the children we just moved.
+          }
+        }
+      });
+    };
+
+    sanitize(editorRef.current);
+    // --- END Sanitize ---
+
     // --- NEW: Detection of deleted chips ---
     const allChips = editorRef.current.querySelectorAll('.mention-chip');
     const newChipIds = new Set<string>();
@@ -389,6 +424,60 @@ export const ContentEditableInput = forwardRef<ContentEditableInputHandle, Conte
         onDrop={(e) => {
           // Prevent browser from natively inserting dropped file paths as text
           e.preventDefault();
+        }}
+        onPaste={(e) => {
+          e.preventDefault();
+          const html = e.clipboardData.getData('text/html');
+          const text = e.clipboardData.getData('text/plain');
+          const selection = window.getSelection();
+          if (!selection || !selection.rangeCount) return;
+          selection.deleteFromDocument();
+
+          if (html) {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            
+            const clean = (container: Node) => {
+              const nodes = Array.from(container.childNodes);
+              nodes.forEach(node => {
+                if (node.nodeType === Node.ELEMENT_NODE) {
+                  const el = node as HTMLElement;
+                  const isChip = el.classList.contains('mention-chip');
+                  const isSafeTag = el.tagName === 'BR' || el.tagName === 'DIV' || el.tagName === 'P';
+                  
+                  if (isChip) {
+                    // Remove all children and keep just the chip with its text/attributes
+                    // (prevents nested junk inside the chip span)
+                    return;
+                  }
+
+                  if (isSafeTag) {
+                    clean(el);
+                  } else {
+                    // Flatten: replace tag with its contents
+                    while (el.firstChild) {
+                      el.parentNode?.insertBefore(el.firstChild, el);
+                    }
+                    el.parentNode?.removeChild(el);
+                  }
+                }
+              });
+            };
+
+            clean(doc.body);
+            
+            const fragment = document.createDocumentFragment();
+            while (doc.body.firstChild) {
+              fragment.appendChild(doc.body.firstChild);
+            }
+            selection.getRangeAt(0).insertNode(fragment);
+          } else {
+            const textNode = document.createTextNode(text);
+            selection.getRangeAt(0).insertNode(textNode);
+          }
+          
+          selection.collapseToEnd();
+          handleInput();
         }}
         data-placeholder={placeholder}
       />

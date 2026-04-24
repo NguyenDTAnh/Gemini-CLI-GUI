@@ -226,7 +226,7 @@ export class GeminiChatController {
 
             // Xóa tag JSON và thay bằng div với class để style, thêm bullet point (với span riêng) và tiền tố
             const regex = new RegExp(`<permission_request>.*?${requestId}.*?</permission_request>`, 'gs');
-            message.content = message.content.replace(regex, `<div class="permission-confirmed"><span class="bullet">●</span> Bạn đã chọn: ${displayValue}</div>`);
+            message.content = message.content.replace(regex, `<div class="permission-confirmed"><span class="bullet">●</span> You selected: ${displayValue}</div>`);
             
             void this.store.upsertSession(session);
             this.post({ type: "sessionUpdated", session });
@@ -459,6 +459,12 @@ export class GeminiChatController {
     }
 
     await this.sendPrompt(session.id, lastUserMessage.content);
+  }
+
+  async toggleActiveMode(): Promise<void> {
+    const session = await this.ensureActiveSession();
+    const nextMode: ChatMode = session.activeMode === "plan" ? "edit" : "plan";
+    await this.setMode(session.id, nextMode);
   }
 
   private async pickAndAttach(): Promise<void> {

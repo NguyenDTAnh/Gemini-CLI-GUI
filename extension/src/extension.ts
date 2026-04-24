@@ -61,6 +61,12 @@ export function activate(context: vscode.ExtensionContext): void {
       await controller?.prefillFromActiveSelection();
     })
   );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("geminiCliChat.toggleModeQuick", async () => {
+      await controller?.toggleActiveMode();
+    })
+  );
 }
 
 export function deactivate(): void {

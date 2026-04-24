@@ -253,7 +253,7 @@ export default function App() {
     }
 
     return Array.from(unique.values());
-  }, [activeSession?.attachments, mentionSearchResults]);
+  }, [mentionSearchResults]);
 
   useEffect(() => {
     const onMessage = (event: MessageEvent<ExtensionToWebviewMessage>) => {
@@ -534,7 +534,7 @@ export default function App() {
         <Composer
           sessionId={activeSession?.id}
           running={running}
-          mode={(activeSession?.activeMode || "plan") as ChatMode}
+          mode={(activeSession?.activeMode || "edit") as ChatMode}
           modelId={activeSession?.defaultModelId || "auto"}
           modelLabel={activeSession?.defaultModelId || "Auto: Gemini CLI default"}
           modelOptions={availableModels}
